@@ -1,6 +1,6 @@
 /* Service worker: полный офлайн-кэш. Работает только по http/https. */
 const CACHE = 'lights-out-stones-v1';
-const ASSETS = ['./', './index.html', './game.js'];
+const ASSETS = ['./', './index.html', './game.js', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(ASSETS)).then(() => self.skipWaiting()));

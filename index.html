@@ -5,4 +5,562 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#e6c896">
 <title>Lights Out Stones</title>
-<link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAYAAABS3GwHAAAO+0lEQVR4nO2dS47dxhWGm41eQxBPDRjQ0DYUWZZaUh6A95AFZAEe9UCjDHqUBfQCtAc50bNl2fAOBAjwNIE3wYANl1wq13lVFR+n6v+Ahsi6fF3y/885RV6WppMN+fnp5bzl/oBPPv3mYtpqX6vuCIIHRzdE8w1D9MCTGZptDMIHHo1QvREIH3g2wmnNyhA/2JtaDU577PT61cua1UHHnD98tGk2mLYQPwQPtjKE1QTTmuKnhF/jctA31w00YzHBtIb4c18CogdWanSkNcHUUvzpAUP0oBUl2tKYYFpD/BA+WAurziQTsLdBIX5wNGLRa26uSBqeasSPqA/2xKI/KhMUPwiD+IG3bKA2gBT9IX7gzQSUpk9rbneiswuOgFaHOW2bS6DgMogfHImgR2spdFpS+kD8wKsJUo2rMwB+zwM8odXrqbX2R/QHR0ajz1jrqgyA0gf02h+oeiEGAO9MUvkTXHTr1q2TEfjDHz/Z+xBAI6TKZXk6fNZqZ73wy//+e9I7MPlvsAaIa6gRTtoI4h/pe8Y6prKAKgOMcucHJu+LRbdSR/gMIzuMxQgm12a5Rfu4CwSGNjppANz7ByM8E0AGAEMDA4ChgQHA0MAAYGhgADA0MAAYGhgADA0MAAYGhgADA0MAAYGBgBDAwOAoYEBwNDAAGBo8EbYBvzjX9fF6159e970WMDHwAAHErt2ezBFO2CADQQ/z+X/qeY0TeI+YYhyYIDGoq8Ru3Z7qSni44EZbMAAlaLXCL51Bki3Fy8DM9iAAQqEzwl6jwwQL5MzA7ICDQxQKfyjZYDwGYygAwZoLPw9MwCMsNKDsFEGUkrFvwgrFmCYT0VJtVPLaP8025Lac8u1vlU7RAbwZALr2Dc54XPzVBvXXgK1rVykp9pDWzqP/kHHJZDFrI+fvK8W/lr9gFz9n25LKns0Rrga+GnzWW+jiWnFHwt/IS0bqM+4ttLlLWjuAHFt8fyUZIN//v2zrrQwZAbQXKC45JHEXmKGVmLXbEeTAaj5OVl+CQqSCXorhbszQKn4KRE/f/7dBbWtR4/+dkmtv1YJlEb3krKHywaPn7wnSyJP4tcylAE04l+mOdHHvHz5nw/LPXz4V7UZWt0ClTrJFuHPSUmUM4Gn8kdr1iEMoC15nj17qhJ+jlevnt2s++DBXz4YgdpPiwyQtueyglb4c7Sc97tE1YPjjhD1V4k/7vXr5xeWe/oc0nak+/6c2blzMUfTvT8zOBu95Gkl/Jjr6xc32zw///PlHhkgtz8p4peURD3QbQfYS/ypEVpmAOpzrk3zdHhWTPeaCbrOANqLu/VxaNH+6tNyJyhtmwzTPdJlBgjRqsWdnlrevHl5kwVKqKn/47Z02hr951+ne8wC3RngSOIPfP/9rwuqU0v95ZDMwM1z25gHNsHpSD9l3rrsoY5Du7wmA3BtkilmowkCPZngtOdOb+5Cbh39A2/fvr5YIwNoyh6LKbSlUy8m6MYAAepuiTesd4BqIvxsiP4ez2X3BuDq/qOUQGH/pRmgVf1PTc+G6N9Tf+B0pFcYX7z49y7lT+DHH9+o96+p/1sIX7M+1+bdBO4NoIlUe0f+mDUyADVPCdxqgvng53RYA+RKn4D3C6TJANy89Jl2+QDX5jkLnPZY+hw5YtVmAK6tRV1fei69msCtATQX5SiiL4EyBNWWfk59ViLwmTm3ns+xWwNoxubUpPUeMgD1uWY6oNmfRvAes4BLA1guypHEb6FV/c9Nz4o26dym63jjtPfoH0O9rbUVt2/fvayJ/q2En247hTp/PWYBdwagLoaUxo8QpbTlD2eIWuFbov8CZ8rcv9447fU/ozjiBdEek9YIpdPWNut59ZQFXBnAejFyy8WvKW7Jl1/eudlvbQnECZyL5PG0tnM
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20512%20512%27%3E%3Cdefs%3E%3CradialGradient%20id%3D%27s%27%20cx%3D%2735%25%27%20cy%3D%2730%25%27%20r%3D%2778%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%235c5c62%27%2F%3E%3Cstop%20offset%3D%270.55%27%20stop-color%3D%27%232c2c30%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23101013%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%27512%27%20height%3D%27512%27%20rx%3D%27100%27%20fill%3D%27%23e2bd7f%27%2F%3E%3Cpath%20d%3D%27M0%2090h512M0%20180h512M0%20270h512M0%20360h512M0%20450h512%27%20stroke%3D%27%23c89a5e%27%20stroke-width%3D%278%27%20opacity%3D%270.55%27%2F%3E%3Crect%20x%3D%2716%27%20y%3D%2716%27%20width%3D%27480%27%20height%3D%27480%27%20rx%3D%2788%27%20fill%3D%27none%27%20stroke%3D%27%23a07840%27%20stroke-width%3D%2710%27%2F%3E%3Ccircle%20cx%3D%27256%27%20cy%3D%27268%27%20r%3D%27150%27%20fill%3D%27url%28%23s%29%27%2F%3E%3Cellipse%20cx%3D%27204%27%20cy%3D%27206%27%20rx%3D%2746%27%20ry%3D%2732%27%20fill%3D%27%23ffffff%27%20opacity%3D%270.3%27%2F%3E%3C%2Fsvg%3E">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20512%20512%27%3E%3Cdefs%3E%3CradialGradient%20id%3D%27s%27%20cx%3D%2735%25%27%20cy%3D%2730%25%27%20r%3D%2778%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%235c5c62%27%2F%3E%3Cstop%20offset%3D%270.55%27%20stop-color%3D%27%232c2c30%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23101013%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%27512%27%20height%3D%27512%27%20rx%3D%27100%27%20fill%3D%27%23e2bd7f%27%2F%3E%3Cpath%20d%3D%27M0%2090h512M0%20180h512M0%20270h512M0%20360h512M0%20450h512%27%20stroke%3D%27%23c89a5e%27%20stroke-width%3D%278%27%20opacity%3D%270.55%27%2F%3E%3Crect%20x%3D%2716%27%20y%3D%2716%27%20width%3D%27480%27%20height%3D%27480%27%20rx%3D%2788%27%20fill%3D%27none%27%20stroke%3D%27%23a07840%27%20stroke-width%3D%2710%27%2F%3E%3Ccircle%20cx%3D%27256%27%20cy%3D%27268%27%20r%3D%27150%27%20fill%3D%27url%28%23s%29%27%2F%3E%3Cellipse%20cx%3D%27204%27%20cy%3D%27206%27%20rx%3D%2746%27%20ry%3D%2732%27%20fill%3D%27%23ffffff%27%20opacity%3D%270.3%27%2F%3E%3C%2Fsvg%3E">
+<link rel="manifest" href="manifest.json">
+<style>
+  :root {
+    --wood-1: #eed9ae;
+    --wood-2: #e2bd7f;
+    --wood-3: #d9ad6c;
+    --line: rgba(92, 58, 28, 0.75);
+    --ink: #4a3626;
+    --stone-black-1: #555;
+    --stone-black-2: #1a1a1c;
+    --stone-white-1: #ffffff;
+    --stone-white-2: #d9d4c8;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: Georgia, 'Times New Roman', serif;
+    background:
+      radial-gradient(ellipse at 20% 10%, #f7ecd2 0%, transparent 55%),
+      linear-gradient(160deg, var(--wood-1) 0%, var(--wood-2) 55%, var(--wood-3) 100%);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-height: 100vh;
+    padding: 18px 14px 30px;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  h1 {
+    font-size: clamp(22px, 5vw, 34px);
+    letter-spacing: 0.12em;
+    font-weight: normal;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+  }
+  .subtitle {
+    font-style: italic;
+    opacity: 0.65;
+    font-size: clamp(12px, 3vw, 15px);
+    margin-top: 2px;
+    letter-spacing: 0.08em;
+  }
+  /* ---------- Панель управления ---------- */
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin: 14px 0 8px;
+    max-width: 560px;
+  }
+  .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button {
+    font-family: inherit; font-size: 14px; padding: 7px 12px;
+    background: rgba(255, 251, 240, 0.55); color: var(--ink);
+    border: none; cursor: pointer;
+  }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button.active { background: var(--ink); color: #f5e9d0; }
+  .btn {
+    font-family: inherit; font-size: 14px; padding: 7px 14px;
+    background: rgba(255, 251, 240, 0.75);
+    color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+    cursor: pointer; transition: background 0.15s, transform 0.1s;
+  }
+  .btn:hover { background: #fffaf0; }
+  .btn:active { transform: scale(0.96); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+  .btn.small { font-size: 12.5px; padding: 5px 10px; }
+  /* ---------- Статистика партии ---------- */
+  .stats {
+    display: flex; gap: 18px; font-size: 15px; margin: 4px 0 12px;
+    font-variant-numeric: tabular-nums;
+  }
+  .stats b { font-weight: normal; opacity: 0.65; font-size: 12px; display: block; text-align: center; letter-spacing: 0.1em; }
+  .stats span { display: block; text-align: center; font-size: 18px; }
+  /* ---------- Сцена: доска + аромапалочка ---------- */
+  .scene { display: flex; align-items: center; gap: clamp(10px, 3vw, 26px); }
+  .board-frame {
+    padding: clamp(10px, 2.5vw, 18px);
+    border-radius: 10px;
+    background:
+      repeating-linear-gradient(90deg, rgba(140,95,45,0.16) 0 2px, transparent 2px 26px),
+      linear-gradient(145deg, #caa06a, #b3854e);
+    box-shadow:
+      0 10px 24px rgba(60, 35, 10, 0.35),
+      inset 0 2px 3px rgba(255, 235, 200, 0.5),
+      inset 0 -2px 4px rgba(80, 50, 20, 0.4);
+  }
+  .board {
+    position: relative;
+    display: grid;
+    width: min(78vw, 420px);
+    aspect-ratio: 1;
+    border-radius: 4px;
+    background:
+      radial-gradient(circle at 30% 25%, rgba(255, 240, 205, 0.5), transparent 60%),
+      linear-gradient(150deg, #eccf95, #ddb271 70%, #d3a45f);
+    box-shadow: inset 0 0 0 1px rgba(92, 58, 28, 0.35), inset 0 2px 10px rgba(120, 80, 35, 0.25);
+  }
+  .cell {
+    position: relative;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    outline: none;
+  }
+  .cell:focus-visible .stone { box-shadow: 0 0 0 2px #7a5; }
+  .stone {
+    position: absolute;
+    inset: 7%;
+    border-radius: 50%;
+    transition: transform 0.18s ease;
+  }
+  .cell:active .stone { transform: scale(0.9); }
+  .face {
+    position: absolute; inset: 0; border-radius: 50%;
+    transition: opacity 0.28s ease;
+    backface-visibility: hidden;
+  }
+  .face.white {
+    background: radial-gradient(circle at 34% 28%, var(--stone-white-1) 0%, #efece4 45%, var(--stone-white-2) 100%);
+    box-shadow: 0 2px 4px rgba(60, 35, 10, 0.45), inset 0 -2px 3px rgba(150, 140, 120, 0.5);
+    opacity: 1;
+  }
+  .face.black {
+    background: radial-gradient(circle at 34% 28%, var(--stone-black-1) 0%, #333 40%, var(--stone-black-2) 100%);
+    box-shadow: 0 2px 4px rgba(60, 35, 10, 0.55), inset 0 -2px 3px rgba(0, 0, 0, 0.6);
+    opacity: 0;
+  }
+  .cell.black .face.white { opacity: 0; }
+  .cell.black .face.black { opacity: 1; }
+  .cell.pressed .stone { animation: flipPulse 0.28s ease; }
+  @keyframes flipPulse {
+    0% { transform: scaleY(1); }
+    45% { transform: scaleY(0.55); }
+    100% { transform: scaleY(1); }
+  }
+  /* ---------- Аромапалочка ---------- */
+  .incense-wrap {
+    display: flex; flex-direction: column; align-items: center;
+    align-self: stretch; justify-content: flex-end; padding-bottom: 8px;
+  }
+  .smoke { position: relative; width: 8px; height: 90px; margin-bottom: -6px; }
+  .smoke i {
+    position: absolute; left: 50%; bottom: 0;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.75);
+    filter: blur(3px);
+    opacity: 0;
+    animation: rise 4s infinite ease-in;
+  }
+  .smoke i:nth-child(2) { animation-delay: 1.3s; }
+  .smoke i:nth-child(3) { animation-delay: 2.6s; }
+  @keyframes rise {
+    0%   { transform: translate(0, 0) scale(0.6); opacity: 0; }
+    15%  { opacity: 0.8; }
+    60%  { transform: translate(-7px, -46px) scale(1.5); opacity: 0.4; }
+    100% { transform: translate(6px, -88px) scale(2.2); opacity: 0; }
+  }
+  .stick {
+    width: 6px; height: 110px;
+    border-radius: 3px 3px 0 0;
+    background: linear-gradient(90deg, #6e3f1f, #a06a3a 45%, #5c3319);
+    position: relative;
+  }
+  .stick::before {
+    content: '';
+    position: absolute; top: -5px; left: 50%; transform: translateX(-50%);
+    width: 7px; height: 7px; border-radius: 50%;
+    background: radial-gradient(circle, #ffd98a 0%, #ff8c2e 55%, rgba(200, 60, 10, 0.9) 100%);
+    animation: ember 2.2s infinite ease-in-out;
+  }
+  @keyframes ember {
+    0%, 100% { box-shadow: 0 0 4px 1px rgba(255, 150, 50, 0.7); }
+    50% { box-shadow: 0 0 9px 3px rgba(255, 120, 30, 0.95); }
+  }
+  .holder {
+    width: 26px; height: 12px; border-radius: 0 0 8px 8px;
+    background: linear-gradient(180deg, #8a5a30, #5f3c1c);
+    box-shadow: 0 2px 3px rgba(60, 35, 10, 0.4);
+  }
+  /* ---------- Оверлеи ---------- */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(50, 32, 14, 0.55);
+    backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 10; padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .card {
+    background: linear-gradient(160deg, #fbf3df, #f0dfb8);
+    border: 1px solid var(--line); border-radius: 14px;
+    padding: 26px 30px; text-align: center;
+    box-shadow: 0 18px 50px rgba(40, 22, 5, 0.5);
+    max-width: 420px; width: 100%;
+    max-height: 85vh; overflow-y: auto;
+  }
+  .card h2 { font-weight: normal; letter-spacing: 0.15em; margin-bottom: 6px; }
+  .card .zen { font-style: italic; opacity: 0.65; margin-bottom: 14px; font-size: 14px; }
+  .card .big { font-size: 20px; margin: 10px 0; }
+  .card .record { color: #9a5b12; font-size: 15px; margin-bottom: 10px; min-height: 20px; }
+  .card .row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+  table.wins { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
+  table.wins th, table.wins td { padding: 5px 6px; border-bottom: 1px solid rgba(92,58,28,0.25); }
+  table.wins th { opacity: 0.6; font-weight: normal; letter-spacing: 0.06em; font-size: 11.5px; }
+  .empty { font-style: italic; opacity: 0.55; margin: 12px 0; }
+</style>
+</head>
+<body>
+
+<h1>Lights Out Stones</h1>
+<div class="subtitle">◈ восточная головоломка · переверните все камни в белые</div>
+
+<div class="controls">
+  <div class="seg" id="levelSeg">
+    <button data-n="3">3×3</button>
+    <button data-n="5" class="active">5×5</button>
+    <button data-n="7">7×7</button>
+  </div>
+  <button class="btn small" id="undoBtn">↩ Отменить ход</button>
+  <button class="btn small" id="newBtn">Новая игра</button>
+  <button class="btn small" id="statsBtn">Статистика</button>
+</div>
+
+<div class="stats">
+  <div><b>ХОДЫ</b><span id="moves">0</span></div>
+  <div><b>ВРЕМЯ</b><span id="time">0:00</span></div>
+  <div><b>РЕКОРД</b><span id="best">—</span></div>
+</div>
+
+<div class="scene">
+  <div class="board-frame">
+    <div class="board" id="board"></div>
+  </div>
+  <div class="incense-wrap" aria-hidden="true">
+    <div class="smoke"><i></i><i></i><i></i></div>
+    <div class="stick"></div>
+    <div class="holder"></div>
+  </div>
+</div>
+
+<!-- Победа -->
+<div class="overlay" id="winOverlay">
+  <div class="card">
+    <h2>ПОБЕДА</h2>
+    <div class="zen">все камни обратились свету</div>
+    <div class="big" id="winDetails"></div>
+    <div class="record" id="winRecord"></div>
+    <div class="row">
+      <button class="btn" id="againBtn">Играть снова</button>
+      <button class="btn" id="nextBtn">Следующий уровень</button>
+    </div>
+  </div>
+</div>
+
+<!-- Статистика -->
+<div class="overlay" id="statsOverlay">
+  <div class="card">
+    <h2>СТАТИСТИКА</h2>
+    <div class="zen">список побед</div>
+    <div id="winsBody"></div>
+    <div class="row">
+      <button class="btn small" id="resetStatsBtn">Сбросить рекорды</button>
+      <button class="btn" id="closeStatsBtn">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+<script>
+(function () {
+  'use strict';
+  var L = window.LightsOutLogic;
+
+  var PRESSES = { 3: [4, 6], 5: [8, 12], 7: [12, 18] };
+  var LEVELS = [3, 5, 7];
+
+  var state = {
+    n: 5,
+    board: [],
+    moves: 0,
+    history: [],
+    timerId: null,
+    startedAt: null,
+    elapsed: 0,
+    locked: false
+  };
+
+  var els = {
+    board: document.getElementById('board'),
+    moves: document.getElementById('moves'),
+    time: document.getElementById('time'),
+    best: document.getElementById('best'),
+    undo: document.getElementById('undoBtn'),
+    win: document.getElementById('winOverlay'),
+    winDetails: document.getElementById('winDetails'),
+    winRecord: document.getElementById('winRecord'),
+    stats: document.getElementById('statsOverlay'),
+    winsBody: document.getElementById('winsBody')
+  };
+
+  /* ---------- Хранилище рекордов ---------- */
+  function bestKey(n) { return 'los_best_' + n; }
+  function getBest(n) {
+    var v = localStorage.getItem(bestKey(n));
+    return v === null ? null : Number(v);
+  }
+  function getWins() {
+    try { return JSON.parse(localStorage.getItem('los_wins') || '[]'); }
+    catch (e) { return []; }
+  }
+  function addWin(entry) {
+    var wins = getWins();
+    wins.unshift(entry);
+    localStorage.setItem('los_wins', JSON.stringify(wins.slice(0, 200)));
+  }
+
+  /* ---------- Звук (Web Audio, без файлов) ---------- */
+  var actx = null;
+  function audio() {
+    if (!actx) {
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (AC) actx = new AC();
+    }
+    if (actx && actx.state === 'suspended') actx.resume();
+    return actx;
+  }
+  function sndClick() {
+    var ctx = audio(); if (!ctx) return;
+    var t = ctx.currentTime;
+    // деревянный щелчок: короткий шумовой импульс + низкий тон
+    var len = Math.floor(ctx.sampleRate * 0.06);
+    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    var noise = ctx.createBufferSource(); noise.buffer = buf;
+    var nf = ctx.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = 900; nf.Q.value = 2;
+    var ng = ctx.createGain();
+    ng.gain.setValueAtTime(0.5, t);
+    ng.gain.exponentialRampToValueAtTime(0.001, t + 0.09);
+    noise.connect(nf); nf.connect(ng); ng.connect(ctx.destination);
+    noise.start(t);
+    var osc = ctx.createOscillator(); osc.type = 'sine'; osc.frequency.value = 160;
+    var og = ctx.createGain();
+    og.gain.setValueAtTime(0.25, t);
+    og.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    osc.connect(og); og.connect(ctx.destination);
+    osc.start(t); osc.stop(t + 0.13);
+  }
+  function sndWin() {
+    var ctx = audio(); if (!ctx) return;
+    // пентатоническое арпеджио — восточный оттенок
+    var notes = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
+    notes.forEach(function (f, i) {
+      var t = ctx.currentTime + i * 0.16;
+      var osc = ctx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = f;
+      var g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.22, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+      osc.connect(g); g.connect(ctx.destination);
+      osc.start(t); osc.stop(t + 0.65);
+    });
+  }
+
+  /* ---------- Таймер ---------- */
+  function fmtTime(sec) {
+    var m = Math.floor(sec / 60), s = sec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  function startTimer() {
+    if (state.timerId) return;
+    state.startedAt = Date.now();
+    state.timerId = setInterval(function () {
+      state.elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
+      els.time.textContent = fmtTime(state.elapsed);
+    }, 500);
+  }
+  function stopTimer() {
+    if (state.timerId) { clearInterval(state.timerId); state.timerId = null; }
+    if (state.startedAt) {
+      state.elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
+      state.startedAt = null;
+    }
+  }
+
+  /* ---------- Отрисовка ---------- */
+  function paintGrid() {
+    var n = state.n;
+    var lines = [];
+    for (var i = 0; i < n; i++) {
+      var p = ((i + 0.5) / n * 100).toFixed(3) + '%';
+      lines.push('linear-gradient(to right, transparent ' + p + ', var(--line) ' + p + ', var(--line) calc(' + p + ' + 1.6px), transparent calc(' + p + ' + 1.6px))');
+      lines.push('linear-gradient(to bottom, transparent ' + p + ', var(--line) ' + p + ', var(--line) calc(' + p + ' + 1.6px), transparent calc(' + p + ' + 1.6px))');
+    }
+    // хоси (звёздные точки), как на досках для го
+    var stars = { 3: [1], 5: [2], 7: [3] }[n] || [];
+    stars.forEach(function (r) {
+      stars.forEach(function (c) {
+        var x = ((c + 0.5) / n * 100).toFixed(3) + '%';
+        var y = ((r + 0.5) / n * 100).toFixed(3) + '%';
+        lines.push('radial-gradient(circle at ' + x + ' ' + y + ', var(--line) 0 3px, transparent 3.5px)');
+      });
+    });
+    els.board.style.backgroundImage = lines.join(', ');
+  }
+
+  function render(pressedIdx) {
+    var n = state.n;
+    els.board.style.gridTemplateColumns = 'repeat(' + n + ', 1fr)';
+    els.board.innerHTML = '';
+    for (var r = 0; r < n; r++) {
+      for (var c = 0; c < n; c++) {
+        (function (r, c) {
+          var idx = r * n + c;
+          var cell = document.createElement('button');
+          cell.className = 'cell' + (state.board[idx] === L.BLACK ? ' black' : '');
+          cell.setAttribute('aria-label', 'камень ' + (r + 1) + '-' + (c + 1));
+          if (idx === pressedIdx) {
+            cell.classList.add('pressed');
+            setTimeout(function () { cell.classList.remove('pressed'); }, 300);
+          }
+          var stone = document.createElement('span');
+          stone.className = 'stone';
+          stone.innerHTML = '<span class="face white"></span><span class="face black"></span>';
+          cell.appendChild(stone);
+          cell.addEventListener('click', function () { onPress(r, c); });
+          els.board.appendChild(cell);
+        })(r, c);
+      }
+    }
+    els.moves.textContent = state.moves;
+    els.undo.disabled = state.history.length === 0;
+  }
+
+  function renderBest() {
+    var b = getBest(state.n);
+    els.best.textContent = b === null ? '—' : fmtTime(b);
+  }
+
+  /* ---------- Логика партии ---------- */
+  function newGame() {
+    stopTimer();
+    var n = state.n;
+    var range = PRESSES[n];
+    var num = range[0] + Math.floor(Math.random() * (range[1] - range[0] + 1));
+    state.board = L.generateBoard(n, num);
+    state.moves = 0;
+    state.history = [];
+    state.elapsed = 0;
+    state.locked = false;
+    els.time.textContent = '0:00';
+    els.win.classList.remove('show');
+    paintGrid();
+    render();
+    renderBest();
+  }
+
+  function onPress(r, c) {
+    if (state.locked) return;
+    if (state.moves === 0 && !state.startedAt) startTimer();
+    state.history.push(state.board.slice());
+    state.board = L.applyPress(state.board, state.n, r, c);
+    state.moves++;
+    sndClick();
+    render(r * state.n + c);
+    if (L.isWin(state.board)) onWin();
+  }
+
+  function onUndo() {
+    if (state.locked || state.history.length === 0) return;
+    state.board = state.history.pop();
+    state.moves = Math.max(0, state.moves - 1);
+    sndClick();
+    render();
+  }
+
+  function onWin() {
+    state.locked = true;
+    stopTimer();
+    sndWin();
+    var n = state.n;
+    var prev = getBest(n);
+    var isRecord = prev === null || state.elapsed < prev;
+    if (isRecord) localStorage.setItem(bestKey(n), String(state.elapsed));
+    addWin({ date: new Date().toISOString().slice(0, 10), level: n, time: state.elapsed, moves: state.moves });
+    els.winDetails.textContent = 'Уровень ' + n + '×' + n + ' · ' +
+      fmtTime(state.elapsed) + ' · ' + state.moves + ' ходов';
+    els.winRecord.textContent = isRecord ? '✦ Новый рекорд! ✦' : 'Рекорд: ' + fmtTime(prev);
+    renderBest();
+    setTimeout(function () { els.win.classList.add('show'); }, 450);
+  }
+
+  /* ---------- Статистика ---------- */
+  function renderStats() {
+    var wins = getWins();
+    if (wins.length === 0) {
+      els.winsBody.innerHTML = '<div class="empty">Пока нет побед — доска ждёт.</div>';
+      return;
+    }
+    var rows = wins.map(function (w) {
+      return '<tr><td>' + w.date + '</td><td>' + w.level + '×' + w.level + '</td><td>' +
+        fmtTime(w.time) + '</td><td>' + w.moves + '</td></tr>';
+    }).join('');
+    els.winsBody.innerHTML =
+      '<table class="wins"><tr><th>ДАТА</th><th>УРОВЕНЬ</th><th>ВРЕМЯ</th><th>ХОДЫ</th></tr>' + rows + '</table>';
+  }
+
+  /* ---------- События ---------- */
+  document.getElementById('levelSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    state.n = Number(btn.dataset.n);
+    var seg = document.getElementById('levelSeg');
+    seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+    newGame();
+  });
+  els.undo.addEventListener('click', onUndo);
+  document.getElementById('newBtn').addEventListener('click', newGame);
+  document.getElementById('againBtn').addEventListener('click', newGame);
+  document.getElementById('nextBtn').addEventListener('click', function () {
+    var i = LEVELS.indexOf(state.n);
+    state.n = LEVELS[(i + 1) % LEVELS.length];
+    document.getElementById('levelSeg').querySelectorAll('button').forEach(function (b) {
+      b.classList.toggle('active', Number(b.dataset.n) === state.n);
+    });
+    newGame();
+  });
+  document.getElementById('statsBtn').addEventListener('click', function () {
+    renderStats(); els.stats.classList.add('show');
+  });
+  document.getElementById('closeStatsBtn').addEventListener('click', function () {
+    els.stats.classList.remove('show');
+  });
+  document.getElementById('resetStatsBtn').addEventListener('click', function () {
+    if (!confirm('Сбросить все рекорды и список побед?')) return;
+    LEVELS.forEach(function (n) { localStorage.removeItem(bestKey(n)); });
+    localStorage.removeItem('los_wins');
+    renderStats(); renderBest();
+  });
+  [els.win, els.stats].forEach(function (ov) {
+    ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('show'); });
+  });
+
+  /* ---------- Service worker (только по http/https) ---------- */
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+
+  newGame();
+})();
+</script>
+</body>
+</html>

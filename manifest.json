@@ -1,0 +1,17 @@
+{
+  "name": "Lights Out Stones",
+  "short_name": "Stones",
+  "description": "Восточная головоломка: переверните все камни в белые.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#e6c896",
+  "theme_color": "#e6c896",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

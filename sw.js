@@ -1,5 +1,5 @@
-/* Service worker: полный офлайн-кэш. Работает только по http/https. */
-const CACHE = 'lights-out-stones-v1';
+/* Service worker: полный офлайн-кэш + автообновление. Работает только по http/https. */
+const CACHE = 'lights-out-stones-v2';
 const ASSETS = ['./', './index.html', './game.js', './manifest.json', './icon.svg'];
 
 self.addEventListener('install', (e) => {
@@ -15,6 +15,21 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
+  // Навигация (загрузка страницы): сначала сеть, кэш — запасной вариант для офлайна.
+  // Так новая версия отдаётся сразу, а офлайн-режим сохраняется.
+  if (e.request.mode === 'navigate') {
+    e.respondWith(
+      fetch(e.request)
+        .then((res) => {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(e.request, copy));
+          return res;
+        })
+        .catch(() => caches.match(e.request, { ignoreSearch: true }))
+    );
+    return;
+  }
+  // Статика (game.js, иконки): сначала кэш, чтобы игра летала и работала без сети
   e.respondWith(
     caches.match(e.request, { ignoreSearch: true }).then((hit) => hit || fetch(e.request))
   );

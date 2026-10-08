@@ -231,7 +231,7 @@
 <body>
 
 <h1>Lights Out Stones</h1>
-<div class="subtitle">◈ восточная головоломка · переверните все камни в белые</div>
+<div class="subtitle" id="subtitle">◈ восточная головоломка · переверните все камни в белые</div>
 
 <div class="controls">
   <div class="seg" id="levelSeg">
@@ -266,7 +266,7 @@
 <div class="overlay" id="winOverlay">
   <div class="card">
     <h2>ПОБЕДА</h2>
-    <div class="zen">все камни обратились свету</div>
+    <div class="zen" id="winZen">все камни обратились свету</div>
     <div class="big" id="winDetails"></div>
     <div class="record" id="winRecord"></div>
     <div class="row">
@@ -314,6 +314,21 @@
       </div>
     </div>
     <div class="menu-row">
+      <div class="menu-label">Сложность</div>
+      <div class="seg" id="diffSeg">
+        <button data-diff="easy">Легко</button>
+        <button data-diff="medium" class="active">Средне</button>
+        <button data-diff="hard">Тяжело</button>
+      </div>
+    </div>
+    <div class="menu-row">
+      <div class="menu-label">Цель</div>
+      <div class="seg" id="targetSeg">
+        <button data-target="white" class="active">⚪ Белые</button>
+        <button data-target="black">⚫ Чёрные</button>
+      </div>
+    </div>
+    <div class="menu-row">
       <div class="menu-label">Звук</div>
       <div class="seg" id="soundSeg">
         <button data-sound="on" class="active">Вкл</button>
@@ -335,11 +350,22 @@
   'use strict';
   var L = window.LightsOutLogic;
 
+  // Диапазоны числа случайных нажатий при генерации: режим → сложность → размер.
+  // Меньше нажатий — проще партия; «лучи» перемешивают сильнее, поэтому там меньше.
   var PRESSES = {
-    cross: { 3: [4, 6], 5: [8, 12], 7: [12, 18] },
-    rays: { 3: [2, 3], 5: [3, 5], 7: [4, 6] }
+    cross: {
+      easy:   { 3: [2, 3],  5: [4, 6],  7: [6, 9] },
+      medium: { 3: [4, 6],  5: [8, 12], 7: [12, 16] },
+      hard:   { 3: [7, 9],  5: [14, 18], 7: [18, 24] }
+    },
+    rays: {
+      easy:   { 3: [1, 2], 5: [2, 3], 7: [3, 4] },
+      medium: { 3: [2, 3], 5: [3, 5], 7: [4, 6] },
+      hard:   { 3: [4, 5], 5: [6, 8], 7: [7, 10] }
+    }
   };
   var LEVELS = [3, 5, 7];
+  var DIFFS = ['easy', 'medium', 'hard'];
   var MODE_NOTES = {
     rays: 'Лучи: нажатие переворачивает все камни своей строки и своего столбца.',
     cross: 'Крест: нажатие переворачивает камень и его ближайших соседей по вертикали и горизонтали.'
@@ -348,6 +374,8 @@
   var state = {
     n: 5,
     mode: localStorage.getItem('los_mode') === 'cross' ? 'cross' : 'rays',
+    diff: DIFFS.indexOf(localStorage.getItem('los_diff')) >= 0 ? localStorage.getItem('los_diff') : 'medium',
+    target: localStorage.getItem('los_target') === 'black' ? 'black' : 'white',
     sound: localStorage.getItem('los_sound') !== 'off',
     board: [],
     moves: 0,
@@ -358,6 +386,8 @@
     locked: false,
     paused: false
   };
+
+  function targetColor() { return state.target === 'black' ? L.BLACK : L.WHITE; }
 
   var els = {
     board: document.getElementById('board'),
@@ -372,11 +402,16 @@
     winsBody: document.getElementById('winsBody'),
     pause: document.getElementById('pauseOverlay'),
     menu: document.getElementById('menuOverlay'),
-    modeNote: document.getElementById('modeNote')
+    modeNote: document.getElementById('modeNote'),
+    subtitle: document.getElementById('subtitle'),
+    winZen: document.getElementById('winZen')
   };
 
   /* ---------- Хранилище рекордов ---------- */
-  function bestKey(n) { return 'los_best_' + n; }
+  // Рекорд зависит от всех параметров партии, иначе «легко» бьёт рекорд «тяжело»
+  function bestKey(n) {
+    return 'los_best_' + n + '_' + state.mode + '_' + state.diff + '_' + state.target;
+  }
   function getBest(n) {
     var v = localStorage.getItem(bestKey(n));
     return v === null ? null : Number(v);
@@ -521,9 +556,17 @@
   function newGame() {
     stopTimer();
     var n = state.n;
-    var range = PRESSES[state.mode][n];
-    var num = range[0] + Math.floor(Math.random() * (range[1] - range[0] + 1));
-    state.board = L.generateBoard(n, num, Math.random, state.mode);
+    var color = targetColor();
+    var range = PRESSES[state.mode][state.diff][n];
+    // защита от случайно «пустой» генерации (нажатия сократились до нуля):
+    // перегенерируем, пока стартовая позиция не станет нерешённой
+    var board, num, tries = 0;
+    do {
+      num = range[0] + Math.floor(Math.random() * (range[1] - range[0] + 1));
+      board = L.generateBoard(n, num, Math.random, state.mode, color);
+      tries++;
+    } while (L.isWin(board, color) && tries < 20);
+    state.board = board;
     state.moves = 0;
     state.history = [];
     state.elapsed = 0;
@@ -533,6 +576,9 @@
     els.time.textContent = '0:00';
     els.win.classList.remove('show');
     els.pause.classList.remove('show');
+    els.subtitle.textContent = state.target === 'black'
+      ? '◈ восточная головоломка · переверните все камни в чёрные'
+      : '◈ восточная головоломка · переверните все камни в белые';
     paintGrid();
     render();
     renderBest();
@@ -546,7 +592,7 @@
     state.moves++;
     sndClick();
     render(r * state.n + c);
-    if (L.isWin(state.board)) onWin();
+    if (L.isWin(state.board, targetColor())) onWin();
   }
 
   function onUndo() {
@@ -565,7 +611,10 @@
     var prev = getBest(n);
     var isRecord = prev === null || state.elapsed < prev;
     if (isRecord) localStorage.setItem(bestKey(n), String(state.elapsed));
-    addWin({ date: new Date().toISOString().slice(0, 10), level: n, mode: state.mode, time: state.elapsed, moves: state.moves });
+    addWin({ date: new Date().toISOString().slice(0, 10), level: n, mode: state.mode, diff: state.diff, target: state.target, time: state.elapsed, moves: state.moves });
+    els.winZen.textContent = state.target === 'black'
+      ? 'все камни обратились тени'
+      : 'все камни обратились свету';
     els.winDetails.textContent = 'Уровень ' + n + '×' + n + ' · ' +
       fmtTime(state.elapsed) + ' · ' + state.moves + ' ходов';
     els.winRecord.textContent = isRecord ? '✦ Новый рекорд! ✦' : 'Рекорд: ' + fmtTime(prev);
@@ -610,6 +659,12 @@
   function syncMenu() {
     document.querySelectorAll('#modeSeg button').forEach(function (b) {
       b.classList.toggle('active', b.dataset.mode === state.mode);
+    });
+    document.querySelectorAll('#diffSeg button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.diff === state.diff);
+    });
+    document.querySelectorAll('#targetSeg button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.target === state.target);
     });
     document.querySelectorAll('#soundSeg button').forEach(function (b) {
       b.classList.toggle('active', (b.dataset.sound === 'on') === state.sound);
@@ -671,6 +726,22 @@
     syncMenu();
     newGame();
   });
+  document.getElementById('diffSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    if (btn.dataset.diff === state.diff) return;
+    state.diff = btn.dataset.diff;
+    localStorage.setItem('los_diff', state.diff);
+    syncMenu();
+    newGame();
+  });
+  document.getElementById('targetSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    if (btn.dataset.target === state.target) return;
+    state.target = btn.dataset.target;
+    localStorage.setItem('los_target', state.target);
+    syncMenu();
+    newGame();
+  });
   document.getElementById('soundSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
     state.sound = btn.dataset.sound === 'on';
@@ -687,7 +758,9 @@
   });
   document.getElementById('resetStatsBtn').addEventListener('click', function () {
     if (!confirm('Сбросить все рекорды и список побед?')) return;
-    LEVELS.forEach(function (n) { localStorage.removeItem(bestKey(n)); });
+    Object.keys(localStorage).forEach(function (k) {
+      if (k.indexOf('los_best_') === 0) localStorage.removeItem(k);
+    });
     localStorage.removeItem('los_wins');
     renderStats(); renderBest();
   });
@@ -697,6 +770,14 @@
 
   /* ---------- Service worker (только по http/https) ---------- */
   if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    // новая версия SW активировалась и перехватила контроль — один раз перезагружаемся,
+    // чтобы пользователь сразу видел свежую версию вместо старой из кэша
+    var refreshing = false;
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (refreshing) return;
+      refreshing = true;
+      location.reload();
+    });
     navigator.serviceWorker.register('sw.js').catch(function () {});
   }
 

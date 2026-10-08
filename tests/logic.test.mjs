@@ -12,7 +12,7 @@ const L = require('../game.js');
 /* ---------- Решатель над GF(2) для проверки решаемости ---------- */
 
 /** A: N x N матрица над GF(2), столбец j = маска нажатия j. Ищем x: A x = b. */
-function solveGf2(board, n) {
+function solveGf2(board, n, mode) {
   const N = n * n;
   // BigInt: для 7x7 N=49 бит — больше 32-битных операций JS
   const RHS = 1n << BigInt(N);
@@ -22,7 +22,7 @@ function solveGf2(board, n) {
     let mask = 0n;
     for (let j = 0; j < N; j++) {
       const [r, c] = [Math.floor(j / n), j % n];
-      if (L.pressMask(n, r, c).includes(i)) mask |= 1n << BigInt(j);
+      if (L.pressMask(n, r, c, mode).includes(i)) mask |= 1n << BigInt(j);
     }
     if (board[i] === L.BLACK) mask |= RHS; // правая часть
     rows.push(mask);
@@ -54,11 +54,11 @@ function solveGf2(board, n) {
 }
 
 /** Проверка: применение решения x к доске даёт все белые. */
-function verifySolution(board, n, x) {
+function verifySolution(board, n, x, mode) {
   let b = board.slice();
   for (let j = 0; j < x.length; j++) {
     if (x[j] === 1) {
-      b = L.applyPress(b, n, Math.floor(j / n), j % n);
+      b = L.applyPress(b, n, Math.floor(j / n), j % n, mode);
     }
   }
   return L.isWin(b);
@@ -124,5 +124,51 @@ test('generateBoard: стартовая позиция не является у�
   for (let seed = 1; seed <= 10; seed++) {
     const board = L.generateBoard(5, 12, L.makeRng(seed));
     assert.ok(!L.isWin(board), `позиция уже решена seed=${seed}`);
+  }
+});
+
+/* ---------- Режим «лучи»: вся строка и весь столбец ---------- */
+
+test('pressMask rays: размер = строка + столбец − 1 пересечение', () => {
+  assert.equal(L.pressMask(5, 2, 2, 'rays').length, 9);
+  assert.equal(L.pressMask(5, 0, 4, 'rays').length, 9);
+  assert.equal(L.pressMask(3, 1, 0, 'rays').length, 5);
+});
+
+test('pressMask rays: вся строка и весь столбец, без лишних', () => {
+  const n = 5;
+  const idx = (r, c) => r * n + c;
+  const cells = L.pressMask(n, 1, 3, 'rays');
+  for (let k = 0; k < n; k++) {
+    assert.ok(cells.includes(idx(1, k)), `строка: клетка 1-${k}`);
+    assert.ok(cells.includes(idx(k, 3)), `столбец: клетка ${k}-3`);
+  }
+  assert.ok(!cells.includes(idx(0, 0)), 'вне строки и столбца не входит');
+  assert.equal(new Set(cells).size, cells.length, 'пересечение учтено один раз');
+});
+
+test('applyPress rays: двойное нажатие — тождество', () => {
+  const b0 = L.generateBoard(5, 5, L.makeRng(11), 'rays');
+  const once = L.applyPress(b0, 5, 2, 0, 'rays');
+  const twice = L.applyPress(once, 5, 2, 0, 'rays');
+  assert.deepEqual(twice, b0);
+});
+
+test('applyPress rays: не мутирует исходную доску', () => {
+  const b0 = L.generateBoard(5, 5, L.makeRng(13), 'rays');
+  const copy = b0.slice();
+  L.applyPress(b0, 5, 4, 4, 'rays');
+  assert.deepEqual(b0, copy);
+});
+
+test('generateBoard rays: все позиции решаемы (3x3, 5x5, 7x7)', () => {
+  const cases = [[3, 3], [5, 4], [7, 5]];
+  for (const [n, presses] of cases) {
+    for (let seed = 1; seed <= 8; seed++) {
+      const board = L.generateBoard(n, presses, L.makeRng(seed * 700 + n), 'rays');
+      const x = solveGf2(board, n, 'rays');
+      assert.ok(x !== null, `нераешаемая позиция rays n=${n} seed=${seed}`);
+      assert.ok(verifySolution(board, n, x, 'rays'), `решение не верифицируется rays n=${n} seed=${seed}`);
+    }
   }
 });

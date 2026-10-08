@@ -16,10 +16,14 @@
   var WHITE = 0;
   var BLACK = 1;
 
-  /** Решённая доска: все камни белые. Плоский массив длины n*n, row-major. */
-  function createSolvedBoard(n) {
+  /**
+   * Решённая доска: все камни цвета target (по умолчанию белые).
+   * Плоский массив длины n*n, row-major.
+   */
+  function createSolvedBoard(n, target) {
+    target = target === undefined ? WHITE : target;
     var b = new Array(n * n);
-    for (var i = 0; i < b.length; i++) b[i] = WHITE;
+    for (var i = 0; i < b.length; i++) b[i] = target;
     return b;
   }
 
@@ -66,10 +70,11 @@
     return next;
   }
 
-  /** Решена ли доска: все камни белые. */
-  function isWin(board) {
+  /** Решена ли доска: все камни цвета target (по умолчанию белые). */
+  function isWin(board, target) {
+    target = target === undefined ? WHITE : target;
     for (var i = 0; i < board.length; i++) {
-      if (board[i] !== WHITE) return false;
+      if (board[i] !== target) return false;
     }
     return true;
   }
@@ -87,13 +92,14 @@
 
   /**
    * Генерация ГАРАНТИРОВАННО решаемой позиции:
-   * к решённой доске применяется numPresses случайных нажатий.
-   * Такая позиция решаема теми же нажатиями (порядок не важен,
-   * повторное нажатие — тождество). Работает для любого режима.
+   * к решённой доске (все камни цвета target) применяется numPresses
+   * случайных нажатий. Такая позиция решаема теми же нажатиями
+   * (порядок не важен, повторное нажатие — тождество).
+   * Работает для любого режима и любой цели.
    */
-  function generateBoard(n, numPresses, rng, mode) {
+  function generateBoard(n, numPresses, rng, mode, target) {
     rng = rng || Math.random;
-    var board = createSolvedBoard(n);
+    var board = createSolvedBoard(n, target);
     for (var k = 0; k < numPresses; k++) {
       var r = Math.floor(rng() * n);
       var c = Math.floor(rng() * n);

@@ -12,8 +12,9 @@ const L = require('../game.js');
 /* ---------- Решатель над GF(2) для проверки решаемости ---------- */
 
 /** A: N x N матрица над GF(2), столбец j = маска нажатия j. Ищем x: A x = b. */
-function solveGf2(board, n, mode) {
+function solveGf2(board, n, mode, target) {
   const N = n * n;
+  target = target === undefined ? L.WHITE : target;
   // BigInt: для 7x7 N=49 бит — больше 32-битных операций JS
   const RHS = 1n << BigInt(N);
   const COEFF = RHS - 1n;
@@ -24,7 +25,7 @@ function solveGf2(board, n, mode) {
       const [r, c] = [Math.floor(j / n), j % n];
       if (L.pressMask(n, r, c, mode).includes(i)) mask |= 1n << BigInt(j);
     }
-    if (board[i] === L.BLACK) mask |= RHS; // правая часть
+    if (board[i] !== target) mask |= RHS; // правая часть: отличия от цели
     rows.push(mask);
   }
   const pivots = [];
@@ -53,15 +54,15 @@ function solveGf2(board, n, mode) {
   return x;
 }
 
-/** Проверка: применение решения x к доске даёт все белые. */
-function verifySolution(board, n, x, mode) {
+/** Проверка: применение решения x к доске даёт все камни цвета target. */
+function verifySolution(board, n, x, mode, target) {
   let b = board.slice();
   for (let j = 0; j < x.length; j++) {
     if (x[j] === 1) {
       b = L.applyPress(b, n, Math.floor(j / n), j % n, mode);
     }
   }
-  return L.isWin(b);
+  return L.isWin(b, target);
 }
 
 /* ---------- Тесты ---------- */
@@ -171,4 +172,32 @@ test('generateBoard rays: все позиции решаемы (3x3, 5x5, 7x7)',
       assert.ok(verifySolution(board, n, x, 'rays'), `решение не верифицируется rays n=${n} seed=${seed}`);
     }
   }
+});
+
+/* ---------- Цель «чёрные»: победа — все камни чёрные ---------- */
+
+test('isWin: с целью black решённая доска — все чёрные', () => {
+  assert.ok(L.isWin(L.createSolvedBoard(5, L.BLACK), L.BLACK));
+  assert.ok(!L.isWin(L.createSolvedBoard(5), L.BLACK));
+  assert.ok(!L.isWin(L.createSolvedBoard(5, L.BLACK)));
+});
+
+test('generateBoard с целью black: старт нерешён, позиции решаемы (оба режима)', () => {
+  for (const mode of ['cross', 'rays']) {
+    for (let seed = 1; seed <= 8; seed++) {
+      const board = L.generateBoard(5, 8, L.makeRng(seed * 31), mode, L.BLACK);
+      assert.ok(!L.isWin(board, L.BLACK), `старт уже решён mode=${mode} seed=${seed}`);
+      const x = solveGf2(board, 5, mode, L.BLACK);
+      assert.ok(x !== null, `нераешаемая позиция mode=${mode} seed=${seed}`);
+      assert.ok(verifySolution(board, 5, x, mode, L.BLACK), `решение не верифицируется mode=${mode} seed=${seed}`);
+    }
+  }
+});
+
+test('generateBoard с целью black: повтор исходных нажатий возвращает к чёрным (детерминированно)', () => {
+  // доска из всех чёрных + одно нажатие → одно нажатие там же решает
+  const scrambled = L.applyPress(L.createSolvedBoard(4, L.BLACK), 4, 1, 2, 'rays');
+  assert.ok(!L.isWin(scrambled, L.BLACK));
+  const solved = L.applyPress(scrambled, 4, 1, 2, 'rays');
+  assert.ok(L.isWin(solved, L.BLACK));
 });

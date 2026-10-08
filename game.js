@@ -32,19 +32,34 @@
     return out;
   }
 
-  /** Позиции, которые переворачивает нажатие на (r, c) — крест. */
-  function pressMask(n, r, c) {
+  /**
+   * Позиции, которые переворачивает нажатие на (r, c).
+   * mode 'cross' — классика: сам камень + соседи по вертикали/горизонтали.
+   * mode 'rays' — вся строка r и весь столбец c (пересечение — один раз).
+   */
+  function pressMask(n, r, c, mode) {
+    mode = mode || 'cross';
+    if (mode === 'rays') {
+      var out = [];
+      var seen = {};
+      for (var k = 0; k < n; k++) {
+        var a = r * n + k;
+        var b = k * n + c;
+        if (!seen[a]) { seen[a] = 1; out.push(a); }
+        if (!seen[b]) { seen[b] = 1; out.push(b); }
+      }
+      return out;
+    }
     return neighbors(n, r, c).map(function (p) { return p[0] * n + p[1]; });
   }
 
   /**
-   * Применить нажатие: вернуть НОВУЮ доску, где камень (r, c)
-   * и его соседи по вертикали/горизонтали сменили цвет.
-   * Исходная доска не мутируется.
+   * Применить нажатие: вернуть НОВУЮ доску, где затронутые камни
+   * сменили цвет. Исходная доска не мутируется.
    */
-  function applyPress(board, n, r, c) {
+  function applyPress(board, n, r, c, mode) {
     var next = board.slice();
-    var cells = pressMask(n, r, c);
+    var cells = pressMask(n, r, c, mode);
     for (var i = 0; i < cells.length; i++) {
       next[cells[i]] = next[cells[i]] === BLACK ? WHITE : BLACK;
     }
@@ -74,15 +89,15 @@
    * Генерация ГАРАНТИРОВАННО решаемой позиции:
    * к решённой доске применяется numPresses случайных нажатий.
    * Такая позиция решаема теми же нажатиями (порядок не важен,
-   * повторное нажатие — тождество).
+   * повторное нажатие — тождество). Работает для любого режима.
    */
-  function generateBoard(n, numPresses, rng) {
+  function generateBoard(n, numPresses, rng, mode) {
     rng = rng || Math.random;
     var board = createSolvedBoard(n);
     for (var k = 0; k < numPresses; k++) {
       var r = Math.floor(rng() * n);
       var c = Math.floor(rng() * n);
-      board = applyPress(board, n, r, c);
+      board = applyPress(board, n, r, c, mode);
     }
     return board;
   }
@@ -90,6 +105,7 @@
   return {
     WHITE: WHITE,
     BLACK: BLACK,
+    MODES: ['cross', 'rays'],
     createSolvedBoard: createSolvedBoard,
     pressMask: pressMask,
     applyPress: applyPress,

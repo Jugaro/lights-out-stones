@@ -217,6 +217,15 @@
   table.wins th, table.wins td { padding: 5px 6px; border-bottom: 1px solid rgba(92,58,28,0.25); }
   table.wins th { opacity: 0.6; font-weight: normal; letter-spacing: 0.06em; font-size: 11.5px; }
   .empty { font-style: italic; opacity: 0.55; margin: 12px 0; }
+  .menu-row {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin: 10px 0;
+  }
+  .menu-label { font-size: 14px; letter-spacing: 0.08em; opacity: 0.75; }
+  .menu-note {
+    font-size: 12.5px; font-style: italic; opacity: 0.6;
+    margin: 12px 0 2px; line-height: 1.45;
+  }
 </style>
 </head>
 <body>
@@ -232,7 +241,8 @@
   </div>
   <button class="btn small" id="undoBtn">↩ Отменить ход</button>
   <button class="btn small" id="newBtn">Новая игра</button>
-  <button class="btn small" id="statsBtn">Статистика</button>
+  <button class="btn small" id="pauseBtn">⏸ Пауза</button>
+  <button class="btn small" id="menuBtn">☰ Меню</button>
 </div>
 
 <div class="stats">
@@ -279,24 +289,74 @@
   </div>
 </div>
 
+<!-- Пауза -->
+<div class="overlay" id="pauseOverlay">
+  <div class="card">
+    <h2>ПАУЗА</h2>
+    <div class="zen">пусть доска подождёт — мысль догонит</div>
+    <div class="row">
+      <button class="btn" id="resumeBtn">Продолжить</button>
+      <button class="btn" id="pauseMenuBtn">Меню</button>
+    </div>
+  </div>
+</div>
+
+<!-- Меню -->
+<div class="overlay" id="menuOverlay">
+  <div class="card">
+    <h2>МЕНЮ</h2>
+    <div class="zen">настройки игры</div>
+    <div class="menu-row">
+      <div class="menu-label">Режим</div>
+      <div class="seg" id="modeSeg">
+        <button data-mode="rays" class="active">Лучи</button>
+        <button data-mode="cross">Крест</button>
+      </div>
+    </div>
+    <div class="menu-row">
+      <div class="menu-label">Звук</div>
+      <div class="seg" id="soundSeg">
+        <button data-sound="on" class="active">Вкл</button>
+        <button data-sound="off">Выкл</button>
+      </div>
+    </div>
+    <div class="menu-note" id="modeNote"></div>
+    <div class="row">
+      <button class="btn small" id="menuStatsBtn">Статистика</button>
+      <button class="btn small" id="menuNewBtn">Новая игра</button>
+      <button class="btn" id="closeMenuBtn">Закрыть</button>
+    </div>
+  </div>
+</div>
+
 <script src="game.js"></script>
 <script>
 (function () {
   'use strict';
   var L = window.LightsOutLogic;
 
-  var PRESSES = { 3: [4, 6], 5: [8, 12], 7: [12, 18] };
+  var PRESSES = {
+    cross: { 3: [4, 6], 5: [8, 12], 7: [12, 18] },
+    rays: { 3: [2, 3], 5: [3, 5], 7: [4, 6] }
+  };
   var LEVELS = [3, 5, 7];
+  var MODE_NOTES = {
+    rays: 'Лучи: нажатие переворачивает все камни своей строки и своего столбца.',
+    cross: 'Крест: нажатие переворачивает камень и его ближайших соседей по вертикали и горизонтали.'
+  };
 
   var state = {
     n: 5,
+    mode: localStorage.getItem('los_mode') === 'cross' ? 'cross' : 'rays',
+    sound: localStorage.getItem('los_sound') !== 'off',
     board: [],
     moves: 0,
     history: [],
     timerId: null,
     startedAt: null,
     elapsed: 0,
-    locked: false
+    locked: false,
+    paused: false
   };
 
   var els = {
@@ -309,7 +369,10 @@
     winDetails: document.getElementById('winDetails'),
     winRecord: document.getElementById('winRecord'),
     stats: document.getElementById('statsOverlay'),
-    winsBody: document.getElementById('winsBody')
+    winsBody: document.getElementById('winsBody'),
+    pause: document.getElementById('pauseOverlay'),
+    menu: document.getElementById('menuOverlay'),
+    modeNote: document.getElementById('modeNote')
   };
 
   /* ---------- Хранилище рекордов ---------- */
@@ -339,6 +402,7 @@
     return actx;
   }
   function sndClick() {
+    if (!state.sound) return;
     var ctx = audio(); if (!ctx) return;
     var t = ctx.currentTime;
     // деревянный щелчок: короткий шумовой импульс + низкий тон
@@ -361,6 +425,7 @@
     osc.start(t); osc.stop(t + 0.13);
   }
   function sndWin() {
+    if (!state.sound) return;
     var ctx = audio(); if (!ctx) return;
     // пентатоническое арпеджио — восточный оттенок
     var notes = [523.25, 587.33, 659.25, 783.99, 880.0, 1046.5];
@@ -383,7 +448,8 @@
   }
   function startTimer() {
     if (state.timerId) return;
-    state.startedAt = Date.now();
+    // startedAt в прошлом на величину уже накопленного времени — таймер корректно продолжается после паузы
+    state.startedAt = Date.now() - state.elapsed * 1000;
     state.timerId = setInterval(function () {
       state.elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
       els.time.textContent = fmtTime(state.elapsed);
@@ -455,25 +521,28 @@
   function newGame() {
     stopTimer();
     var n = state.n;
-    var range = PRESSES[n];
+    var range = PRESSES[state.mode][n];
     var num = range[0] + Math.floor(Math.random() * (range[1] - range[0] + 1));
-    state.board = L.generateBoard(n, num);
+    state.board = L.generateBoard(n, num, Math.random, state.mode);
     state.moves = 0;
     state.history = [];
     state.elapsed = 0;
     state.locked = false;
+    state.paused = false;
+    pauseBtn.textContent = '⏸ Пауза';
     els.time.textContent = '0:00';
     els.win.classList.remove('show');
+    els.pause.classList.remove('show');
     paintGrid();
     render();
     renderBest();
   }
 
   function onPress(r, c) {
-    if (state.locked) return;
+    if (state.locked || state.paused) return;
     if (state.moves === 0 && !state.startedAt) startTimer();
     state.history.push(state.board.slice());
-    state.board = L.applyPress(state.board, state.n, r, c);
+    state.board = L.applyPress(state.board, state.n, r, c, state.mode);
     state.moves++;
     sndClick();
     render(r * state.n + c);
@@ -496,7 +565,7 @@
     var prev = getBest(n);
     var isRecord = prev === null || state.elapsed < prev;
     if (isRecord) localStorage.setItem(bestKey(n), String(state.elapsed));
-    addWin({ date: new Date().toISOString().slice(0, 10), level: n, time: state.elapsed, moves: state.moves });
+    addWin({ date: new Date().toISOString().slice(0, 10), level: n, mode: state.mode, time: state.elapsed, moves: state.moves });
     els.winDetails.textContent = 'Уровень ' + n + '×' + n + ' · ' +
       fmtTime(state.elapsed) + ' · ' + state.moves + ' ходов';
     els.winRecord.textContent = isRecord ? '✦ Новый рекорд! ✦' : 'Рекорд: ' + fmtTime(prev);
@@ -512,11 +581,40 @@
       return;
     }
     var rows = wins.map(function (w) {
+      var mode = w.mode === 'cross' ? 'крест' : (w.mode === 'rays' ? 'лучи' : '—');
       return '<tr><td>' + w.date + '</td><td>' + w.level + '×' + w.level + '</td><td>' +
-        fmtTime(w.time) + '</td><td>' + w.moves + '</td></tr>';
+        mode + '</td><td>' + fmtTime(w.time) + '</td><td>' + w.moves + '</td></tr>';
     }).join('');
     els.winsBody.innerHTML =
-      '<table class="wins"><tr><th>ДАТА</th><th>УРОВЕНЬ</th><th>ВРЕМЯ</th><th>ХОДЫ</th></tr>' + rows + '</table>';
+      '<table class="wins"><tr><th>ДАТА</th><th>УРОВЕНЬ</th><th>РЕЖИМ</th><th>ВРЕМЯ</th><th>ХОДЫ</th></tr>' + rows + '</table>';
+  }
+
+  /* ---------- Пауза ---------- */
+  var pauseBtn = document.getElementById('pauseBtn');
+  function pauseGame() {
+    if (state.paused || state.locked) return;
+    state.paused = true;
+    stopTimer();
+    pauseBtn.textContent = '▶ Продолжить';
+    els.pause.classList.add('show');
+  }
+  function resumeGame() {
+    if (!state.paused) return;
+    state.paused = false;
+    pauseBtn.textContent = '⏸ Пауза';
+    els.pause.classList.remove('show');
+    if (state.moves > 0) startTimer(); // таймер продолжает с накопленного времени
+  }
+
+  /* ---------- Меню ---------- */
+  function syncMenu() {
+    document.querySelectorAll('#modeSeg button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.mode === state.mode);
+    });
+    document.querySelectorAll('#soundSeg button').forEach(function (b) {
+      b.classList.toggle('active', (b.dataset.sound === 'on') === state.sound);
+    });
+    els.modeNote.textContent = MODE_NOTES[state.mode];
   }
 
   /* ---------- События ---------- */
@@ -538,8 +636,51 @@
     });
     newGame();
   });
-  document.getElementById('statsBtn').addEventListener('click', function () {
-    renderStats(); els.stats.classList.add('show');
+  /* Пауза */
+  document.getElementById('pauseBtn').addEventListener('click', function () {
+    if (state.paused) { resumeGame(); } else { pauseGame(); }
+  });
+  document.getElementById('resumeBtn').addEventListener('click', resumeGame);
+  document.getElementById('pauseMenuBtn').addEventListener('click', function () {
+    els.pause.classList.remove('show');
+    syncMenu();
+    els.menu.classList.add('show');
+  });
+  /* Меню */
+  document.getElementById('menuBtn').addEventListener('click', function () {
+    syncMenu();
+    els.menu.classList.add('show');
+  });
+  document.getElementById('closeMenuBtn').addEventListener('click', function () {
+    els.menu.classList.remove('show');
+  });
+  document.getElementById('menuNewBtn').addEventListener('click', function () {
+    els.menu.classList.remove('show');
+    newGame();
+  });
+  document.getElementById('menuStatsBtn').addEventListener('click', function () {
+    els.menu.classList.remove('show');
+    renderStats();
+    els.stats.classList.add('show');
+  });
+  document.getElementById('modeSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    if (btn.dataset.mode === state.mode) return;
+    state.mode = btn.dataset.mode;
+    localStorage.setItem('los_mode', state.mode);
+    syncMenu();
+    newGame();
+  });
+  document.getElementById('soundSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    state.sound = btn.dataset.sound === 'on';
+    localStorage.setItem('los_sound', state.sound ? 'on' : 'off');
+    syncMenu();
+    if (state.sound) sndClick();
+  });
+  /* Автопауза при сворачивании вкладки */
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden && !state.locked && state.moves > 0 && !state.paused) pauseGame();
   });
   document.getElementById('closeStatsBtn').addEventListener('click', function () {
     els.stats.classList.remove('show');
@@ -550,7 +691,7 @@
     localStorage.removeItem('los_wins');
     renderStats(); renderBest();
   });
-  [els.win, els.stats].forEach(function (ov) {
+  [els.win, els.stats, els.pause, els.menu].forEach(function (ov) {
     ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('show'); });
   });
 
@@ -559,6 +700,7 @@
     navigator.serviceWorker.register('sw.js').catch(function () {});
   }
 
+  syncMenu();
   newGame();
 })();
 </script>

@@ -493,6 +493,40 @@
     osc.connect(og); og.connect(ctx.destination);
     osc.start(t); osc.stop(t + 0.13);
   }
+  // один мягкий «переворот» камня (без ударного акцента)
+  function sndFlipTick(vol, when) {
+    var ctx = actx; if (!ctx) return;
+    var len = Math.floor(ctx.sampleRate * 0.05);
+    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    var src = ctx.createBufferSource(); src.buffer = buf;
+    var f = ctx.createBiquadFilter(); f.type = 'bandpass';
+    f.frequency.value = 1200 + Math.random() * 600; f.Q.value = 3;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(vol, when);
+    g.gain.exponentialRampToValueAtTime(0.001, when + 0.07);
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+    src.start(when);
+    var o = ctx.createOscillator(); o.type = 'sine';
+    o.frequency.value = 190 + Math.random() * 60;
+    var og = ctx.createGain();
+    og.gain.setValueAtTime(vol * 0.5, when);
+    og.gain.exponentialRampToValueAtTime(0.001, when + 0.09);
+    o.connect(og); og.connect(ctx.destination);
+    o.start(when); o.stop(when + 0.1);
+  }
+  // каскад: все переворачиваемые камни звучат по очереди, затухая
+  function sndCascade(mask, n, r, c) {
+    if (!state.sound) return;
+    var ctx = audio(); if (!ctx) return;
+    var t0 = ctx.currentTime + 0.01;
+    mask.forEach(function (idx) {
+      var rr = Math.floor(idx / n), cc = idx % n;
+      var dist = Math.abs(rr - r) + Math.abs(cc - c);
+      sndFlipTick(0.4 * Math.pow(0.8, dist), t0 + dist * 0.035);
+    });
+  }
   function sndWin() {
     if (!state.sound) return;
     var ctx = audio(); if (!ctx) return;
@@ -510,11 +544,12 @@
     });
   }
 
-  /* ---------- Музыка: генеративная медитация (без файлов) ----------
-   * Медленные «кото»-переборы по C-пентатонике + тихий фоновый гул.
-   * Мелодия генерируется, а не играется запись: бесконечна и не повторяется.
+  /* ---------- Музыка: генеративная «живая» тема (без файлов) ----------
+   * Живые пентатонические переборы (кото) + флейтовые фразы с вибрато
+   * + редкие переливы «птиц». Всё синтезируется на лету: бесконечно и не повторяется.
    */
-  var music = { on: false, timerId: null, nextTime: 0, pad: [], bus: null };
+  var music = { on: false, timerId: null, pad: [], bus: null,
+                stepAt: 0, step: 0, arpIdx: 4, fluteAt: 0, birdAt: 0 };
   var MUSIC_SCALE = [261.63, 293.66, 329.63, 392.0, 440.0,    // C4-пентатоника
                      523.25, 587.33, 659.25, 784.0, 880.0];   // вторая октава
 
@@ -528,23 +563,73 @@
   function pluckNote(freq, when, vol) {
     var osc = actx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = freq;
     var flt = actx.createBiquadFilter(); flt.type = 'lowpass';
-    flt.frequency.setValueAtTime(freq * 5, when);
-    flt.frequency.exponentialRampToValueAtTime(freq * 1.3, when + 1.4);
+    flt.frequency.setValueAtTime(freq * 6, when);
+    flt.frequency.exponentialRampToValueAtTime(freq * 1.5, when + 0.9);
     var g = actx.createGain();
     g.gain.setValueAtTime(0.0001, when);
-    g.gain.exponentialRampToValueAtTime(vol, when + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, when + 2.6);
+    g.gain.exponentialRampToValueAtTime(vol, when + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 1.5);
     osc.connect(flt); flt.connect(g); g.connect(music.bus);
-    osc.start(when); osc.stop(when + 2.8);
+    osc.start(when); osc.stop(when + 1.7);
+  }
+  function fluteNote(freq, when, dur, vol) {
+    var osc = actx.createOscillator(); osc.type = 'sine'; osc.frequency.value = freq;
+    // вибрато, как у духовых
+    var vib = actx.createOscillator(); vib.type = 'sine'; vib.frequency.value = 5 + Math.random() * 1.5;
+    var vg = actx.createGain(); vg.gain.value = freq * 0.008;
+    vib.connect(vg); vg.connect(osc.frequency);
+    var g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(vol, when + 0.12);
+    g.gain.setValueAtTime(vol, when + Math.max(0.13, dur - 0.3));
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    osc.connect(g); g.connect(music.bus);
+    osc.start(when); osc.stop(when + dur + 0.05);
+    vib.start(when); vib.stop(when + dur + 0.05);
+  }
+  function birdChirp(when) {
+    [0, 0.13].forEach(function (ofs, i) {
+      var osc = actx.createOscillator(); osc.type = 'sine';
+      var f0 = 2300 + Math.random() * 700 + i * 250;
+      osc.frequency.setValueAtTime(f0, when + ofs);
+      osc.frequency.exponentialRampToValueAtTime(f0 * 1.5, when + ofs + 0.07);
+      osc.frequency.exponentialRampToValueAtTime(f0 * 1.1, when + ofs + 0.11);
+      var g = actx.createGain();
+      g.gain.setValueAtTime(0.0001, when + ofs);
+      g.gain.exponentialRampToValueAtTime(0.026, when + ofs + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, when + ofs + 0.13);
+      osc.connect(g); g.connect(music.bus);
+      osc.start(when + ofs); osc.stop(when + ofs + 0.15);
+    });
   }
   function musicSchedule() {
     // планируем на ~1,2 с вперёд, чтобы звук шёл ровно, без задержек кадра
-    while (music.nextTime < actx.currentTime + 1.2) {
-      if (Math.random() < 0.8) {
-        var freq = MUSIC_SCALE[Math.floor(Math.random() * MUSIC_SCALE.length)];
-        pluckNote(freq, music.nextTime, 0.07 + Math.random() * 0.05);
+    // переборы: шаг ~0,3 с, случайное блуждание по пентатонике
+    while (music.stepAt < actx.currentTime + 1.2) {
+      music.step++;
+      music.arpIdx += Math.floor(Math.random() * 5) - 2;      // -2..+2
+      music.arpIdx = Math.max(0, Math.min(MUSIC_SCALE.length - 1, music.arpIdx));
+      var v = 0.055 + Math.random() * 0.045;
+      if (music.step % 8 === 0) v *= 1.35;                    // первый звук «такта» чуть сильнее
+      pluckNote(MUSIC_SCALE[music.arpIdx], music.stepAt, v);
+      music.stepAt += 0.28 + Math.random() * 0.1;
+    }
+    // флейта: фраза из 3–5 нот каждые 6–10 с
+    if (music.fluteAt < actx.currentTime + 1.2) {
+      var nNotes = 3 + Math.floor(Math.random() * 3);
+      var fi = Math.floor(Math.random() * (MUSIC_SCALE.length - 4));
+      for (var k = 0; k < nNotes; k++) {
+        fi += Math.floor(Math.random() * 3) - 1;
+        fi = Math.max(0, Math.min(MUSIC_SCALE.length - 1, fi));
+        fluteNote(MUSIC_SCALE[fi] * 2, music.fluteAt + k * 0.42,
+                  0.5 + Math.random() * 0.5, 0.032 + Math.random() * 0.02);
       }
-      music.nextTime += 1.8 + Math.random() * 2.4;
+      music.fluteAt += 6 + Math.random() * 4;
+    }
+    // «птицы»: редкие переливы поверх
+    if (music.birdAt < actx.currentTime + 1.2) {
+      birdChirp(music.birdAt + Math.random() * 0.5);
+      music.birdAt += 8 + Math.random() * 7;
     }
   }
   function musicPadStart() {
@@ -566,7 +651,11 @@
     music.on = true;
     if (!music.pad.length) musicPadStart();
     else music.pad.forEach(function (p) { p.g.gain.setTargetAtTime(p.level, ctx.currentTime, 1.5); });
-    music.nextTime = ctx.currentTime + 0.4;
+    music.stepAt = ctx.currentTime + 0.2;
+    music.step = 0;
+    music.arpIdx = 4;
+    music.fluteAt = ctx.currentTime + 3.5;
+    music.birdAt = ctx.currentTime + 6.5;
     if (!music.timerId) music.timerId = setInterval(musicSchedule, 400);
   }
   function musicStop() {
@@ -689,7 +778,7 @@
     state.history.push(state.board.slice());
     state.board = L.applyPress(state.board, state.n, r, c, state.mode);
     state.moves++;
-    sndClick();
+    sndCascade(L.pressMask(state.n, r, c, state.mode), state.n, r, c);
     render(r * state.n + c);
     if (L.isWin(state.board, targetColor())) onWin();
   }

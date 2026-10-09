@@ -1,5 +1,5 @@
 /* Service worker: полный офлайн-кэш + автообновление. Работает только по http/https. */
-const CACHE = 'lights-out-stones-v3';
+const CACHE = 'lights-out-stones-v4';
 const ASSETS = [
   './',
   './index.html',

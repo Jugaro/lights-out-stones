@@ -238,6 +238,27 @@
     font-size: 12.5px; font-style: italic; opacity: 0.6;
     margin: 12px 0 2px; line-height: 1.45;
   }
+  /* ---------- Ползунок громкости ---------- */
+  input.vol {
+    -webkit-appearance: none; appearance: none;
+    width: 160px; max-width: 60vw; height: 6px;
+    border-radius: 3px; outline: none;
+    background: linear-gradient(90deg, var(--ink) var(--fill, 80%), rgba(92, 58, 28, 0.25) var(--fill, 80%));
+    cursor: pointer;
+  }
+  input.vol::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff8ea, #e2bd7f);
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 3px rgba(60, 35, 10, 0.4);
+  }
+  input.vol::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff8ea, #e2bd7f);
+    border: 1px solid var(--line);
+    box-shadow: 0 1px 3px rgba(60, 35, 10, 0.4);
+  }
   /* ---------- Статистика: разделы сложности ---------- */
   .diff-title {
     text-align: left; font-size: 13px; letter-spacing: 0.12em;
@@ -387,6 +408,10 @@
         <button data-melody="pirates">Пираты</button>
       </div>
     </div>
+    <div class="menu-row">
+      <div class="menu-label">Громкость музыки</div>
+      <input type="range" id="volumeRange" class="vol" min="0" max="100" step="1" aria-label="Громкость музыки">
+    </div>
     <div class="menu-note" id="modeNote"></div>
     <div class="row">
       <button class="btn small" id="menuStatsBtn">Статистика</button>
@@ -431,6 +456,7 @@
     sound: localStorage.getItem('los_sound') !== 'off',
     music: localStorage.getItem('los_music') === 'on',
     melody: localStorage.getItem('los_melody') === 'pirates' ? 'pirates' : 'zen',
+    volume: Math.min(1, Math.max(0, Number(localStorage.getItem('los_volume')) || 0.8)),
     unlocked: Math.max(3, Number(localStorage.getItem('los_unlocked')) || 3),
     board: [],
     moves: 0,
@@ -576,7 +602,7 @@
   function musicBusEnsure() {
     if (!music.bus) {
       music.bus = actx.createGain();
-      music.bus.gain.value = 0.9;
+      music.bus.gain.value = state.volume;
       music.bus.connect(actx.destination);
     }
   }
@@ -626,7 +652,7 @@
    * Не копия саундтрека Sega (мелодия защищена авторским правом), а свободная
    * аранжировка «в духе»: горн-призыв в D-миноре, штабельный ритм, квадратный лид.
    */
-  var PIRATES_E8 = 60 / 100 / 2;  // восьмая при 100 BPM
+  var PIRATES_E8 = 60 / 78 / 2;  // восьмая при 78 BPM — неторопливо, «на подумать»
   var PIRATES_LOOP = 64;          // восьмых в цикле (8 тактов)
   // [midi-нота, длина в восьмых]; 0 — пауза
   var PIRATES_LEAD = [
@@ -722,7 +748,7 @@
       var v = 0.055 + Math.random() * 0.045;
       if (music.step % 8 === 0) v *= 1.35;                    // первый звук «такта» чуть сильнее
       pluckNote(MUSIC_SCALE[music.arpIdx], music.stepAt, v);
-      music.stepAt += 0.45 + Math.random() * 0.15;
+      music.stepAt += 0.72 + Math.random() * 0.2;
     }
     // флейта: фраза из 3–5 нот каждые 6–10 с
     if (music.fluteAt < actx.currentTime + 1.2) {
@@ -1122,6 +1148,19 @@
     localStorage.setItem('los_melody', state.melody);
     syncMenu();
     if (music.on) { musicStop(); musicStart(); }  // перезапускаем с новой мелодией
+  });
+  /* Громкость музыки: ползунок 0–100, меняет общий гейн музыкальной шины */
+  var volumeRange = document.getElementById('volumeRange');
+  function paintVolume() {
+    volumeRange.value = Math.round(state.volume * 100);
+    volumeRange.style.setProperty('--fill', Math.round(state.volume * 100) + '%');
+  }
+  paintVolume();
+  volumeRange.addEventListener('input', function () {
+    state.volume = volumeRange.value / 100;
+    localStorage.setItem('los_volume', String(state.volume));
+    volumeRange.style.setProperty('--fill', volumeRange.value + '%');
+    if (music.bus && actx) music.bus.gain.setTargetAtTime(state.volume, actx.currentTime, 0.1);
   });
   /* Музыка: браузеры разрешают звук только после жеста пользователя —
      если музыка включена, стартуем при первом касании экрана */

@@ -516,16 +516,11 @@
     o.connect(og); og.connect(ctx.destination);
     o.start(when); o.stop(when + 0.1);
   }
-  // каскад: все переворачиваемые камни звучат по очереди, затухая
-  function sndCascade(mask, n, r, c) {
+  // один мягкий «переворот» нажатого камня
+  function sndFlip() {
     if (!state.sound) return;
     var ctx = audio(); if (!ctx) return;
-    var t0 = ctx.currentTime + 0.01;
-    mask.forEach(function (idx) {
-      var rr = Math.floor(idx / n), cc = idx % n;
-      var dist = Math.abs(rr - r) + Math.abs(cc - c);
-      sndFlipTick(0.4 * Math.pow(0.8, dist), t0 + dist * 0.035);
-    });
+    sndFlipTick(0.45, ctx.currentTime + 0.01);
   }
   function sndWin() {
     if (!state.sound) return;
@@ -604,7 +599,7 @@
   }
   function musicSchedule() {
     // планируем на ~1,2 с вперёд, чтобы звук шёл ровно, без задержек кадра
-    // переборы: шаг ~0,3 с, случайное блуждание по пентатонике
+    // переборы: шаг ~0,5 с, неторопливое блуждание по пентатонике
     while (music.stepAt < actx.currentTime + 1.2) {
       music.step++;
       music.arpIdx += Math.floor(Math.random() * 5) - 2;      // -2..+2
@@ -612,7 +607,7 @@
       var v = 0.055 + Math.random() * 0.045;
       if (music.step % 8 === 0) v *= 1.35;                    // первый звук «такта» чуть сильнее
       pluckNote(MUSIC_SCALE[music.arpIdx], music.stepAt, v);
-      music.stepAt += 0.28 + Math.random() * 0.1;
+      music.stepAt += 0.45 + Math.random() * 0.15;
     }
     // флейта: фраза из 3–5 нот каждые 6–10 с
     if (music.fluteAt < actx.currentTime + 1.2) {
@@ -778,7 +773,7 @@
     state.history.push(state.board.slice());
     state.board = L.applyPress(state.board, state.n, r, c, state.mode);
     state.moves++;
-    sndCascade(L.pressMask(state.n, r, c, state.mode), state.n, r, c);
+    sndFlip();
     render(r * state.n + c);
     if (L.isWin(state.board, targetColor())) onWin();
   }

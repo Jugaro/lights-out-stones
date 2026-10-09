@@ -67,6 +67,7 @@
   }
   .seg button + button { border-left: 1px solid var(--line); }
   .seg button.active { background: var(--ink); color: #f5e9d0; }
+  .seg button:disabled { opacity: 0.35; cursor: default; }
   .btn {
     font-family: inherit; font-size: 14px; padding: 7px 14px;
     background: rgba(255, 251, 240, 0.75);
@@ -174,13 +175,24 @@
     border-radius: 3px 3px 0 0;
     background: linear-gradient(90deg, #6e3f1f, #a06a3a 45%, #5c3319);
     position: relative;
+    overflow: hidden;
   }
   .stick::before {
     content: '';
-    position: absolute; top: -5px; left: 50%; transform: translateX(-50%);
+    position: absolute; top: calc(var(--burn, 0) * 1.05px - 5px); left: 50%; transform: translateX(-50%);
     width: 7px; height: 7px; border-radius: 50%;
     background: radial-gradient(circle, #ffd98a 0%, #ff8c2e 55%, rgba(200, 60, 10, 0.9) 100%);
     animation: ember 2.2s infinite ease-in-out;
+    transition: top 1s linear;
+  }
+  /* обгоревшая часть палочки растёт сверху вниз, полное тление — 5 минут */
+  .stick::after {
+    content: '';
+    position: absolute; left: 0; top: 0; right: 0;
+    height: calc(var(--burn, 0) * 1.05px);
+    background: linear-gradient(180deg, #150e09, #2b1c12);
+    border-radius: 3px 3px 0 0;
+    transition: height 1s linear;
   }
   @keyframes ember {
     0%, 100% { box-shadow: 0 0 4px 1px rgba(255, 150, 50, 0.7); }
@@ -283,7 +295,7 @@
   </div>
   <div class="incense-wrap" aria-hidden="true">
     <div class="smoke"><i></i><i></i><i></i></div>
-    <div class="stick"></div>
+    <div class="stick" id="incenseStick"></div>
     <div class="holder"></div>
   </div>
 </div>
@@ -368,6 +380,13 @@
         <button data-music="off" class="active">Выкл</button>
       </div>
     </div>
+    <div class="menu-row">
+      <div class="menu-label">Мелодия</div>
+      <div class="seg" id="melodySeg">
+        <button data-melody="zen" class="active">Дзен</button>
+        <button data-melody="pirates">Пираты</button>
+      </div>
+    </div>
     <div class="menu-note" id="modeNote"></div>
     <div class="row">
       <button class="btn small" id="menuStatsBtn">Статистика</button>
@@ -411,6 +430,8 @@
     target: localStorage.getItem('los_target') === 'black' ? 'black' : 'white',
     sound: localStorage.getItem('los_sound') !== 'off',
     music: localStorage.getItem('los_music') === 'on',
+    melody: localStorage.getItem('los_melody') === 'pirates' ? 'pirates' : 'zen',
+    unlocked: Math.max(3, Number(localStorage.getItem('los_unlocked')) || 3),
     board: [],
     moves: 0,
     history: [],
@@ -422,6 +443,9 @@
   };
 
   function targetColor() { return state.target === 'black' ? L.BLACK : L.WHITE; }
+
+  // если выбранный размер ещё не открыт — начинаем с максимально доступного
+  if (state.n > state.unlocked) state.n = state.unlocked;
 
   var els = {
     board: document.getElementById('board'),
@@ -544,7 +568,8 @@
    * + редкие переливы «птиц». Всё синтезируется на лету: бесконечно и не повторяется.
    */
   var music = { on: false, timerId: null, pad: [], bus: null,
-                stepAt: 0, step: 0, arpIdx: 4, fluteAt: 0, birdAt: 0 };
+                stepAt: 0, step: 0, arpIdx: 4, fluteAt: 0, birdAt: 0,
+                nextTime: 0, pi8: 0, loopStart: 0 };
   var MUSIC_SCALE = [261.63, 293.66, 329.63, 392.0, 440.0,    // C4-пентатоника
                      523.25, 587.33, 659.25, 784.0, 880.0];   // вторая октава
 
@@ -597,6 +622,96 @@
       osc.start(when + ofs); osc.stop(when + ofs + 0.15);
     });
   }
+  /* ---------- «Пираты тёмной воды»: тема в духе 16-бит ----------
+   * Не копия саундтрека Sega (мелодия защищена авторским правом), а свободная
+   * аранжировка «в духе»: горн-призыв в D-миноре, штабельный ритм, квадратный лид.
+   */
+  var PIRATES_E8 = 60 / 100 / 2;  // восьмая при 100 BPM
+  var PIRATES_LOOP = 64;          // восьмых в цикле (8 тактов)
+  // [midi-нота, длина в восьмых]; 0 — пауза
+  var PIRATES_LEAD = [
+    [69,1],[74,1],[77,1],[76,1],[74,2],[69,1],[71,1],
+    [74,3],[72,1],[69,2],[65,1],[67,1],
+    [70,2],[74,1],[72,1],[70,2],[67,1],[70,1],
+    [69,6],[0,2],
+    [77,2],[81,1],[79,1],[77,2],[74,1],[77,1],
+    [76,2],[79,1],[76,1],[72,2],[76,1],[72,1],
+    [74,1],[76,1],[77,1],[79,1],[81,2],[77,2],
+    [74,5],[69,1],[0,2]
+  ];
+  var PIRATES_BASS = [
+    [50,2],[50,2],[45,2],[45,2],
+    [50,2],[50,2],[45,2],[45,2],
+    [46,2],[46,2],[43,2],[43,2],
+    [45,2],[45,2],[45,2],[45,2],
+    [50,2],[50,2],[45,2],[45,2],
+    [48,2],[48,2],[43,2],[43,2],
+    [50,2],[50,2],[45,2],[45,2],
+    [50,2],[45,2],[50,2],[45,2]
+  ];
+  var piratesEv = null;
+  function piratesBuild() {
+    if (piratesEv) return piratesEv;
+    var lead = [], bass = [], t = 0;
+    PIRATES_LEAD.forEach(function (e) { if (e[0]) lead.push({ t: t, midi: e[0], dur: e[1] }); t += e[1]; });
+    t = 0;
+    PIRATES_BASS.forEach(function (e) { if (e[0]) bass.push({ t: t, midi: e[0], dur: e[1] }); t += e[1]; });
+    piratesEv = { lead: lead, bass: bass };
+    return piratesEv;
+  }
+  function piratesLead(midi, when, durE8) {
+    var f = 440 * Math.pow(2, (midi - 69) / 12);
+    var o1 = actx.createOscillator(); o1.type = 'square'; o1.frequency.value = f;
+    var o2 = actx.createOscillator(); o2.type = 'square'; o2.frequency.value = f; o2.detune.value = 9;
+    var flt = actx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 2400;
+    var g = actx.createGain();
+    var dur = durE8 * PIRATES_E8;
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(0.055, when + 0.015);
+    g.gain.setValueAtTime(0.055, when + Math.max(0.02, dur - 0.06));
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    o1.connect(flt); o2.connect(flt); flt.connect(g); g.connect(music.bus);
+    o1.start(when); o1.stop(when + dur + 0.02);
+    o2.start(when); o2.stop(when + dur + 0.02);
+  }
+  function piratesBass(midi, when, durE8) {
+    var f = 440 * Math.pow(2, (midi - 69) / 12);
+    var osc = actx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = f;
+    var g = actx.createGain();
+    var dur = durE8 * PIRATES_E8;
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(0.07, when + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+    osc.connect(g); g.connect(music.bus);
+    osc.start(when); osc.stop(when + dur + 0.02);
+  }
+  function piratesHat(when) {
+    var len = Math.floor(actx.sampleRate * 0.03);
+    var buf = actx.createBuffer(1, len, actx.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    var src = actx.createBufferSource(); src.buffer = buf;
+    var f = actx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 6500;
+    var g = actx.createGain();
+    g.gain.setValueAtTime(0.018, when);
+    g.gain.exponentialRampToValueAtTime(0.001, when + 0.03);
+    src.connect(f); f.connect(g); g.connect(music.bus);
+    src.start(when);
+  }
+  function piratesSchedule() {
+    var ev = piratesBuild();
+    var loopDur = PIRATES_LOOP * PIRATES_E8;
+    while (music.nextTime < actx.currentTime + 1.2) {
+      var cycle = Math.floor(music.pi8 / PIRATES_LOOP);
+      var pos = music.pi8 % PIRATES_LOOP;
+      var when = music.loopStart + cycle * loopDur + pos * PIRATES_E8;
+      for (var i = 0; i < ev.lead.length; i++) if (ev.lead[i].t === pos) piratesLead(ev.lead[i].midi, when, ev.lead[i].dur);
+      for (var j = 0; j < ev.bass.length; j++) if (ev.bass[j].t === pos) piratesBass(ev.bass[j].midi, when, ev.bass[j].dur);
+      if (pos % 2 === 0) piratesHat(when);
+      music.pi8++;
+      music.nextTime = music.loopStart + Math.floor(music.pi8 / PIRATES_LOOP) * loopDur + (music.pi8 % PIRATES_LOOP) * PIRATES_E8;
+    }
+  }
   function musicSchedule() {
     // планируем на ~1,2 с вперёд, чтобы звук шёл ровно, без задержек кадра
     // переборы: шаг ~0,5 с, неторопливое блуждание по пентатонике
@@ -646,17 +761,43 @@
     music.on = true;
     if (!music.pad.length) musicPadStart();
     else music.pad.forEach(function (p) { p.g.gain.setTargetAtTime(p.level, ctx.currentTime, 1.5); });
-    music.stepAt = ctx.currentTime + 0.2;
-    music.step = 0;
-    music.arpIdx = 4;
-    music.fluteAt = ctx.currentTime + 3.5;
-    music.birdAt = ctx.currentTime + 6.5;
-    if (!music.timerId) music.timerId = setInterval(musicSchedule, 400);
+    if (music.timerId) { clearInterval(music.timerId); music.timerId = null; }
+    if (state.melody === 'pirates') {
+      music.loopStart = ctx.currentTime + 0.15;
+      music.pi8 = 0;
+      music.nextTime = music.loopStart;
+      music.timerId = setInterval(piratesSchedule, 300);
+    } else {
+      music.stepAt = ctx.currentTime + 0.2;
+      music.step = 0;
+      music.arpIdx = 4;
+      music.fluteAt = ctx.currentTime + 3.5;
+      music.birdAt = ctx.currentTime + 6.5;
+      music.timerId = setInterval(musicSchedule, 400);
+    }
   }
   function musicStop() {
     music.on = false;
     if (music.timerId) { clearInterval(music.timerId); music.timerId = null; }
     if (actx) music.pad.forEach(function (p) { p.g.gain.setTargetAtTime(0, actx.currentTime, 0.6); });
+  }
+
+  /* ---------- Уровни: открываются по очереди, 3×3 → 5×5 → 7×7 ---------- */
+  function renderLevels() {
+    document.querySelectorAll('#levelSeg button').forEach(function (b) {
+      var locked = Number(b.dataset.n) > state.unlocked;
+      b.disabled = locked;
+      b.textContent = locked ? '🔒' : (b.dataset.n + '×' + b.dataset.n);
+      b.classList.toggle('active', Number(b.dataset.n) === state.n);
+    });
+  }
+
+  /* ---------- Аромапалочка: тление за 5 минут партийного времени ---------- */
+  var stickEl = document.getElementById('incenseStick');
+  function updateIncense() {
+    if (!stickEl) return;
+    var pct = Math.min(100, state.elapsed / 300 * 100);
+    stickEl.style.setProperty('--burn', pct.toFixed(2));
   }
 
   /* ---------- Таймер ---------- */
@@ -671,6 +812,7 @@
     state.timerId = setInterval(function () {
       state.elapsed = Math.floor((Date.now() - state.startedAt) / 1000);
       els.time.textContent = fmtTime(state.elapsed);
+      updateIncense();
     }, 500);
   }
   function stopTimer() {
@@ -757,6 +899,7 @@
     state.paused = false;
     pauseBtn.textContent = '⏸ Пауза';
     els.time.textContent = '0:00';
+    updateIncense();
     els.win.classList.remove('show');
     els.pause.classList.remove('show');
     els.subtitle.textContent = state.target === 'black'
@@ -795,6 +938,13 @@
     var isRecord = prev === null || state.elapsed < prev;
     if (isRecord) localStorage.setItem(bestKey(n), String(state.elapsed));
     addWin({ date: new Date().toISOString().slice(0, 10), level: n, mode: state.mode, diff: state.diff, target: state.target, time: state.elapsed, moves: state.moves });
+    // прошли уровень — открываем следующий
+    var nextLevel = LEVELS[LEVELS.indexOf(n) + 1];
+    if (nextLevel && nextLevel > state.unlocked) {
+      state.unlocked = nextLevel;
+      localStorage.setItem('los_unlocked', String(nextLevel));
+      renderLevels();
+    }
     els.winZen.textContent = state.target === 'black'
       ? 'все камни обратились тени'
       : 'все камни обратились свету';
@@ -871,12 +1021,16 @@
     document.querySelectorAll('#musicSeg button').forEach(function (b) {
       b.classList.toggle('active', (b.dataset.music === 'on') === state.music);
     });
+    document.querySelectorAll('#melodySeg button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.melody === state.melody);
+    });
     els.modeNote.textContent = MODE_NOTES[state.mode];
   }
 
   /* ---------- События ---------- */
   document.getElementById('levelSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
+    if (btn.disabled) return;
     state.n = Number(btn.dataset.n);
     var seg = document.getElementById('levelSeg');
     seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b === btn); });
@@ -891,6 +1045,7 @@
     document.getElementById('levelSeg').querySelectorAll('button').forEach(function (b) {
       b.classList.toggle('active', Number(b.dataset.n) === state.n);
     });
+    renderLevels();
     newGame();
   });
   /* Пауза */
@@ -960,6 +1115,14 @@
     syncMenu();
     if (state.music) musicStart(); else musicStop();
   });
+  document.getElementById('melodySeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    if (btn.dataset.melody === state.melody) return;
+    state.melody = btn.dataset.melody;
+    localStorage.setItem('los_melody', state.melody);
+    syncMenu();
+    if (music.on) { musicStop(); musicStart(); }  // перезапускаем с новой мелодией
+  });
   /* Музыка: браузеры разрешают звук только после жеста пользователя —
      если музыка включена, стартуем при первом касании экрана */
   document.addEventListener('pointerdown', function () {
@@ -998,6 +1161,8 @@
   }
 
   syncMenu();
+  renderLevels();
+  updateIncense();
   newGame();
 })();
 </script>

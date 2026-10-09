@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#e6c896">
 <title>Lights Out Stones</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20512%20512%27%3E%3Cdefs%3E%3CradialGradient%20id%3D%27s%27%20cx%3D%2735%25%27%20cy%3D%2730%25%27%20r%3D%2778%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%235c5c62%27%2F%3E%3Cstop%20offset%3D%270.55%27%20stop-color%3D%27%232c2c30%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23101013%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%27512%27%20height%3D%27512%27%20rx%3D%27100%27%20fill%3D%27%23e2bd7f%27%2F%3E%3Cpath%20d%3D%27M0%2090h512M0%20180h512M0%20270h512M0%20360h512M0%20450h512%27%20stroke%3D%27%23c89a5e%27%20stroke-width%3D%278%27%20opacity%3D%270.55%27%2F%3E%3Crect%20x%3D%2716%27%20y%3D%2716%27%20width%3D%27480%27%20height%3D%27480%27%20rx%3D%2788%27%20fill%3D%27none%27%20stroke%3D%27%23a07840%27%20stroke-width%3D%2710%27%2F%3E%3Ccircle%20cx%3D%27256%27%20cy%3D%27268%27%20r%3D%27150%27%20fill%3D%27url%28%23s%29%27%2F%3E%3Cellipse%20cx%3D%27204%27%20cy%3D%27206%27%20rx%3D%2746%27%20ry%3D%2732%27%20fill%3D%27%23ffffff%27%20opacity%3D%270.3%27%2F%3E%3C%2Fsvg%3E">
-<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20512%20512%27%3E%3Cdefs%3E%3CradialGradient%20id%3D%27s%27%20cx%3D%2735%25%27%20cy%3D%2730%25%27%20r%3D%2778%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%235c5c62%27%2F%3E%3Cstop%20offset%3D%270.55%27%20stop-color%3D%27%232c2c30%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23101013%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%27512%27%20height%3D%27512%27%20rx%3D%27100%27%20fill%3D%27%23e2bd7f%27%2F%3E%3Cpath%20d%3D%27M0%2090h512M0%20180h512M0%20270h512M0%20360h512M0%20450h512%27%20stroke%3D%27%23c89a5e%27%20stroke-width%3D%278%27%20opacity%3D%270.55%27%2F%3E%3Crect%20x%3D%2716%27%20y%3D%2716%27%20width%3D%27480%27%20height%3D%27480%27%20rx%3D%2788%27%20fill%3D%27none%27%20stroke%3D%27%23a07840%27%20stroke-width%3D%2710%27%2F%3E%3Ccircle%20cx%3D%27256%27%20cy%3D%27268%27%20r%3D%27150%27%20fill%3D%27url%28%23s%29%27%2F%3E%3Cellipse%20cx%3D%27204%27%20cy%3D%27206%27%20rx%3D%2746%27%20ry%3D%2732%27%20fill%3D%27%23ffffff%27%20opacity%3D%270.3%27%2F%3E%3C%2Fsvg%3E">
+<link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
 <style>
   :root {
@@ -361,6 +361,13 @@
         <button data-sound="off">Выкл</button>
       </div>
     </div>
+    <div class="menu-row">
+      <div class="menu-label">Музыка</div>
+      <div class="seg" id="musicSeg">
+        <button data-music="on">Вкл</button>
+        <button data-music="off" class="active">Выкл</button>
+      </div>
+    </div>
     <div class="menu-note" id="modeNote"></div>
     <div class="row">
       <button class="btn small" id="menuStatsBtn">Статистика</button>
@@ -403,6 +410,7 @@
     diff: DIFFS.indexOf(localStorage.getItem('los_diff')) >= 0 ? localStorage.getItem('los_diff') : 'medium',
     target: localStorage.getItem('los_target') === 'black' ? 'black' : 'white',
     sound: localStorage.getItem('los_sound') !== 'off',
+    music: localStorage.getItem('los_music') === 'on',
     board: [],
     moves: 0,
     history: [],
@@ -500,6 +508,71 @@
       osc.connect(g); g.connect(ctx.destination);
       osc.start(t); osc.stop(t + 0.65);
     });
+  }
+
+  /* ---------- Музыка: генеративная медитация (без файлов) ----------
+   * Медленные «кото»-переборы по C-пентатонике + тихий фоновый гул.
+   * Мелодия генерируется, а не играется запись: бесконечна и не повторяется.
+   */
+  var music = { on: false, timerId: null, nextTime: 0, pad: [], bus: null };
+  var MUSIC_SCALE = [261.63, 293.66, 329.63, 392.0, 440.0,    // C4-пентатоника
+                     523.25, 587.33, 659.25, 784.0, 880.0];   // вторая октава
+
+  function musicBusEnsure() {
+    if (!music.bus) {
+      music.bus = actx.createGain();
+      music.bus.gain.value = 0.9;
+      music.bus.connect(actx.destination);
+    }
+  }
+  function pluckNote(freq, when, vol) {
+    var osc = actx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = freq;
+    var flt = actx.createBiquadFilter(); flt.type = 'lowpass';
+    flt.frequency.setValueAtTime(freq * 5, when);
+    flt.frequency.exponentialRampToValueAtTime(freq * 1.3, when + 1.4);
+    var g = actx.createGain();
+    g.gain.setValueAtTime(0.0001, when);
+    g.gain.exponentialRampToValueAtTime(vol, when + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, when + 2.6);
+    osc.connect(flt); flt.connect(g); g.connect(music.bus);
+    osc.start(when); osc.stop(when + 2.8);
+  }
+  function musicSchedule() {
+    // планируем на ~1,2 с вперёд, чтобы звук шёл ровно, без задержек кадра
+    while (music.nextTime < actx.currentTime + 1.2) {
+      if (Math.random() < 0.8) {
+        var freq = MUSIC_SCALE[Math.floor(Math.random() * MUSIC_SCALE.length)];
+        pluckNote(freq, music.nextTime, 0.07 + Math.random() * 0.05);
+      }
+      music.nextTime += 1.8 + Math.random() * 2.4;
+    }
+  }
+  function musicPadStart() {
+    // фоновый гул: C3 + G3, с лёгким расстроенным обертоном
+    [[130.81, 0.030], [196.0, 0.022]].forEach(function (cfg) {
+      var o1 = actx.createOscillator(); o1.type = 'sine'; o1.frequency.value = cfg[0];
+      var o2 = actx.createOscillator(); o2.type = 'sine'; o2.frequency.value = cfg[0] * 2.005;
+      var g2 = actx.createGain(); g2.gain.value = 0.4;
+      var g = actx.createGain(); g.gain.value = 0;
+      g.gain.setTargetAtTime(cfg[1], actx.currentTime, 4);
+      o1.connect(g); o2.connect(g2); g2.connect(g); g.connect(music.bus);
+      o1.start(); o2.start();
+      music.pad.push({ o1: o1, o2: o2, g: g, level: cfg[1] });
+    });
+  }
+  function musicStart() {
+    var ctx = audio(); if (!ctx) return;
+    musicBusEnsure();
+    music.on = true;
+    if (!music.pad.length) musicPadStart();
+    else music.pad.forEach(function (p) { p.g.gain.setTargetAtTime(p.level, ctx.currentTime, 1.5); });
+    music.nextTime = ctx.currentTime + 0.4;
+    if (!music.timerId) music.timerId = setInterval(musicSchedule, 400);
+  }
+  function musicStop() {
+    music.on = false;
+    if (music.timerId) { clearInterval(music.timerId); music.timerId = null; }
+    if (actx) music.pad.forEach(function (p) { p.g.gain.setTargetAtTime(0, actx.currentTime, 0.6); });
   }
 
   /* ---------- Таймер ---------- */
@@ -711,6 +784,9 @@
     document.querySelectorAll('#soundSeg button').forEach(function (b) {
       b.classList.toggle('active', (b.dataset.sound === 'on') === state.sound);
     });
+    document.querySelectorAll('#musicSeg button').forEach(function (b) {
+      b.classList.toggle('active', (b.dataset.music === 'on') === state.music);
+    });
     els.modeNote.textContent = MODE_NOTES[state.mode];
   }
 
@@ -791,6 +867,20 @@
     syncMenu();
     if (state.sound) sndClick();
   });
+  document.getElementById('musicSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    var want = btn.dataset.music === 'on';
+    if (want === state.music) return;
+    state.music = want;
+    localStorage.setItem('los_music', state.music ? 'on' : 'off');
+    syncMenu();
+    if (state.music) musicStart(); else musicStop();
+  });
+  /* Музыка: браузеры разрешают звук только после жеста пользователя —
+     если музыка включена, стартуем при первом касании экрана */
+  document.addEventListener('pointerdown', function () {
+    if (state.music && !music.on) musicStart();
+  }, { once: true });
   /* Автопауза при сворачивании вкладки */
   document.addEventListener('visibilitychange', function () {
     if (document.hidden && !state.locked && state.moves > 0 && !state.paused) pauseGame();

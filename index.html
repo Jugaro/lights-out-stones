@@ -226,6 +226,32 @@
     font-size: 12.5px; font-style: italic; opacity: 0.6;
     margin: 12px 0 2px; line-height: 1.45;
   }
+  /* ---------- Статистика: разделы сложности ---------- */
+  .diff-title {
+    text-align: left; font-size: 13px; letter-spacing: 0.12em;
+    opacity: 0.7; margin: 14px 0 2px;
+  }
+  .diff-title:first-child { margin-top: 4px; }
+  /* ---------- Узкий экран: в меню подпись строкой выше, кнопки тянутся ---------- */
+  @media (max-width: 480px) {
+    .menu-row { flex-direction: column; align-items: stretch; gap: 6px; margin: 12px 0; }
+    .menu-label { text-align: left; }
+    .seg button { flex: 1; padding: 8px 6px; font-size: 13.5px; }
+    table.wins { font-size: 12px; }
+    table.wins th, table.wins td { padding: 4px 3px; }
+  }
+  /* ---------- Горизонтальная ориентация: ужимаем, чтобы всё поле влезло без скролла ---------- */
+  @media (orientation: landscape) and (max-height: 560px) {
+    body { padding: 8px 10px 12px; }
+    h1 { font-size: 19px; }
+    .subtitle { display: none; }
+    .controls { margin: 6px 0 4px; gap: 6px; }
+    .stats { margin: 2px 0 6px; font-size: 13px; }
+    .stats span { font-size: 15px; }
+    .board { width: min(50vw, 58vh, 420px); }
+    .board-frame { padding: 8px; }
+    .incense-wrap { display: none; }
+  }
 </style>
 </head>
 <body>
@@ -623,19 +649,35 @@
   }
 
   /* ---------- Статистика ---------- */
+  var DIFF_LABELS = { easy: 'Легко', medium: 'Средне', hard: 'Тяжело' };
+
+  function winsTable(rows) {
+    var body = rows.map(function (w) {
+      var mode = w.mode === 'cross' ? 'крест' : (w.mode === 'rays' ? 'лучи' : '—');
+      return '<tr><td>' + w.date + '</td><td>' + w.level + '×' + w.level + '</td><td>' +
+        mode + '</td><td>' + fmtTime(w.time) + '</td><td>' + w.moves + '</td></tr>';
+    }).join('');
+    return '<table class="wins"><tr><th>ДАТА</th><th>УРОВЕНЬ</th><th>РЕЖИМ</th><th>ВРЕМЯ</th><th>ХОДЫ</th></tr>' +
+      body + '</table>';
+  }
+
   function renderStats() {
     var wins = getWins();
     if (wins.length === 0) {
       els.winsBody.innerHTML = '<div class="empty">Пока нет побед — доска ждёт.</div>';
       return;
     }
-    var rows = wins.map(function (w) {
-      var mode = w.mode === 'cross' ? 'крест' : (w.mode === 'rays' ? 'лучи' : '—');
-      return '<tr><td>' + w.date + '</td><td>' + w.level + '×' + w.level + '</td><td>' +
-        mode + '</td><td>' + fmtTime(w.time) + '</td><td>' + w.moves + '</td></tr>';
-    }).join('');
-    els.winsBody.innerHTML =
-      '<table class="wins"><tr><th>ДАТА</th><th>УРОВЕНЬ</th><th>РЕЖИМ</th><th>ВРЕМЯ</th><th>ХОДЫ</th></tr>' + rows + '</table>';
+    // разбиваем по сложности; записи до появления сложности попадают в «Средне»
+    var groups = { easy: [], medium: [], hard: [] };
+    wins.forEach(function (w) {
+      (groups[w.diff] ? groups[w.diff] : groups.medium).push(w);
+    });
+    var html = '';
+    ['easy', 'medium', 'hard'].forEach(function (d) {
+      if (!groups[d].length) return;
+      html += '<div class="diff-title">' + DIFF_LABELS[d] + '</div>' + winsTable(groups[d]);
+    });
+    els.winsBody.innerHTML = html;
   }
 
   /* ---------- Пауза ---------- */

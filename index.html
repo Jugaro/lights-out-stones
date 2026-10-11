@@ -165,7 +165,7 @@
     /* поднимается от тлеющего кончика: низ дымки = подставка (12) + остаток палочки */
     bottom: calc(122px - var(--burn, 0) * 1.05px);
     width: 8px; height: 90px;
-    transition: bottom 1s linear;
+    transition: bottom 1s linear, opacity 1.2s ease;
   }
   .smoke i {
     position: absolute; left: 50%; bottom: 0;
@@ -195,6 +195,7 @@
     position: absolute; top: calc(var(--burn, 0) * 1.05px - 5px); left: 50%; transform: translateX(-50%);
     width: 7px; height: 7px; border-radius: 50%;
     background: radial-gradient(circle, #ffd98a 0%, #ff8c2e 55%, rgba(200, 60, 10, 0.9) 100%);
+    filter: drop-shadow(0 0 5px rgba(255, 150, 50, 0.8));
     animation: ember 2.2s infinite ease-in-out;
     transition: top 1s linear;
   }
@@ -211,8 +212,15 @@
     transition: height 1s linear;
   }
   @keyframes ember {
-    0%, 100% { box-shadow: 0 0 4px 1px rgba(255, 150, 50, 0.7); }
-    50% { box-shadow: 0 0 9px 3px rgba(255, 120, 30, 0.95); }
+    0%, 100% { box-shadow: 0 0 6px 2px rgba(255, 150, 50, 0.7); }
+    50% { box-shadow: 0 0 14px 5px rgba(255, 130, 40, 0.95), 0 0 30px 12px rgba(255, 110, 30, 0.35); }
+  }
+  /* пауза: дымок гаснет, уголёк перестаёт пульсировать и тускнеет */
+  body.paused .smoke { opacity: 0; }
+  body.paused .smoke i { animation-play-state: paused; }
+  body.paused .stick::before {
+    animation-play-state: paused;
+    filter: drop-shadow(0 0 2px rgba(255, 150, 50, 0.4));
   }
   .holder {
     width: 26px; height: 12px; border-radius: 0 0 8px 8px;
@@ -930,12 +938,14 @@
     if (state.paused || state.locked) return;
     state.paused = true;
     stopTimer();
+    document.body.classList.add('paused');
     pauseBtn.textContent = '▶ Продолжить';
     els.pause.classList.add('show');
   }
   function resumeGame() {
     if (!state.paused) return;
     state.paused = false;
+    document.body.classList.remove('paused');
     pauseBtn.textContent = '⏸ Пауза';
     els.pause.classList.remove('show');
     if (state.moves > 0) startTimer(); // таймер продолжает с накопленного времени

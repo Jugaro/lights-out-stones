@@ -745,6 +745,31 @@
     stickEl.parentElement.style.setProperty('--burn', pct.toFixed(2));
   }
 
+  /* ---------- Потрескивание тлеющего уголька (тихий фон, Web Audio) ---------- */
+  var crackleId = null;
+  function crackleTick() {
+    if (!state.sound || state.paused || state.locked || !actx) return;
+    if (Math.random() > 0.45) return;   // не каждый тик — рваное, живое потрескивание
+    var ctx = actx;
+    var t = ctx.currentTime + Math.random() * 0.25;
+    var len = Math.floor(ctx.sampleRate * 0.014);
+    var buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    var d = buf.getChannelData(0);
+    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+    var src = ctx.createBufferSource(); src.buffer = buf;
+    var f = ctx.createBiquadFilter(); f.type = 'bandpass';
+    f.frequency.value = 1600 + Math.random() * 2800; f.Q.value = 6;
+    var g = ctx.createGain();
+    g.gain.setValueAtTime(0.018 + Math.random() * 0.028, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+    src.connect(f); f.connect(g); g.connect(ctx.destination);
+    src.start(t);
+  }
+  function crackleStart() {
+    if (crackleId) return;
+    crackleId = setInterval(crackleTick, 650);
+  }
+
   /* ---------- Таймер ---------- */
   function fmtTime(sec) {
     var m = Math.floor(sec / 60), s = sec % 60;
@@ -1072,10 +1097,12 @@
     volumeRange.style.setProperty('--fill', volumeRange.value + '%');
     if (music.bus && actx) music.bus.gain.setTargetAtTime(state.volume, actx.currentTime, 0.1);
   });
-  /* Музыка: браузеры разрешают звук только после жеста пользователя —
-     если музыка включена, стартуем при первом касании экрана */
+  /* Музыка и потрескивание: браузеры разрешают звук только после жеста пользователя —
+     стартуем при первом касании экрана */
   document.addEventListener('pointerdown', function () {
     if (state.music && !music.on) musicStart();
+    audio();
+    crackleStart();
   }, { once: true });
   /* Автопауза при сворачивании вкладки */
   document.addEventListener('visibilitychange', function () {

@@ -40,8 +40,14 @@
   h1 {
     font-size: clamp(22px, 5vw, 34px);
     letter-spacing: 0.12em;
-    font-weight: normal;
-    text-shadow: 0 1px 0 rgba(255,255,255,0.5);
+    font-weight: 600;
+    color: #17100a;
+    /* тонкий белый контур — четырея смещённые копии текста */
+    text-shadow:
+      -1px 0 0 #fff8ea, 1px 0 0 #fff8ea,
+      0 -1px 0 #fff8ea, 0 1px 0 #fff8ea,
+      -1px -1px 0 #fff8ea, 1px -1px 0 #fff8ea,
+      -1px 1px 0 #fff8ea, 1px 1px 0 #fff8ea;
   }
   .subtitle {
     font-style: italic;
@@ -185,12 +191,15 @@
     animation: ember 2.2s infinite ease-in-out;
     transition: top 1s linear;
   }
-  /* обгоревшая часть палочки растёт сверху вниз, полное тление — 5 минут */
+  /* сгоревшая часть палочки «исчезает», обнажая фон страницы —
+     создаётся впечатление, что палочка реально прогорела сверху вниз */
   .stick::after {
     content: '';
     position: absolute; left: 0; top: 0; right: 0;
     height: calc(var(--burn, 0) * 1.05px);
-    background: linear-gradient(180deg, #150e09, #2b1c12);
+    background:
+      radial-gradient(ellipse at 20% 10%, #f7ecd2 0%, transparent 55%),
+      linear-gradient(160deg, var(--wood-1) 0%, var(--wood-2) 55%, var(--wood-3) 100%);
     border-radius: 3px 3px 0 0;
     transition: height 1s linear;
   }
@@ -402,13 +411,6 @@
       </div>
     </div>
     <div class="menu-row">
-      <div class="menu-label">Мелодия</div>
-      <div class="seg" id="melodySeg">
-        <button data-melody="zen" class="active">Дзен</button>
-        <button data-melody="pirates">Пираты</button>
-      </div>
-    </div>
-    <div class="menu-row">
       <div class="menu-label">Громкость музыки</div>
       <input type="range" id="volumeRange" class="vol" min="0" max="100" step="1" aria-label="Громкость музыки">
     </div>
@@ -455,7 +457,6 @@
     target: localStorage.getItem('los_target') === 'black' ? 'black' : 'white',
     sound: localStorage.getItem('los_sound') !== 'off',
     music: localStorage.getItem('los_music') === 'on',
-    melody: localStorage.getItem('los_melody') === 'pirates' ? 'pirates' : 'zen',
     volume: Math.min(1, Math.max(0, Number(localStorage.getItem('los_volume')) || 0.8)),
     unlocked: Math.max(3, Number(localStorage.getItem('los_unlocked')) || 3),
     board: [],
@@ -594,8 +595,7 @@
    * + редкие переливы «птиц». Всё синтезируется на лету: бесконечно и не повторяется.
    */
   var music = { on: false, timerId: null, pad: [], bus: null,
-                stepAt: 0, step: 0, arpIdx: 4, fluteAt: 0, birdAt: 0,
-                nextTime: 0, pi8: 0, loopStart: 0 };
+                stepAt: 0, step: 0, arpIdx: 4, fluteAt: 0, birdAt: 0 };
   var MUSIC_SCALE = [261.63, 293.66, 329.63, 392.0, 440.0,    // C4-пентатоника
                      523.25, 587.33, 659.25, 784.0, 880.0];   // вторая октава
 
@@ -648,96 +648,6 @@
       osc.start(when + ofs); osc.stop(when + ofs + 0.15);
     });
   }
-  /* ---------- «Пираты тёмной воды»: тема в духе 16-бит ----------
-   * Не копия саундтрека Sega (мелодия защищена авторским правом), а свободная
-   * аранжировка «в духе»: горн-призыв в D-миноре, штабельный ритм, квадратный лид.
-   */
-  var PIRATES_E8 = 60 / 78 / 2;  // восьмая при 78 BPM — неторопливо, «на подумать»
-  var PIRATES_LOOP = 64;          // восьмых в цикле (8 тактов)
-  // [midi-нота, длина в восьмых]; 0 — пауза
-  var PIRATES_LEAD = [
-    [69,1],[74,1],[77,1],[76,1],[74,2],[69,1],[71,1],
-    [74,3],[72,1],[69,2],[65,1],[67,1],
-    [70,2],[74,1],[72,1],[70,2],[67,1],[70,1],
-    [69,6],[0,2],
-    [77,2],[81,1],[79,1],[77,2],[74,1],[77,1],
-    [76,2],[79,1],[76,1],[72,2],[76,1],[72,1],
-    [74,1],[76,1],[77,1],[79,1],[81,2],[77,2],
-    [74,5],[69,1],[0,2]
-  ];
-  var PIRATES_BASS = [
-    [50,2],[50,2],[45,2],[45,2],
-    [50,2],[50,2],[45,2],[45,2],
-    [46,2],[46,2],[43,2],[43,2],
-    [45,2],[45,2],[45,2],[45,2],
-    [50,2],[50,2],[45,2],[45,2],
-    [48,2],[48,2],[43,2],[43,2],
-    [50,2],[50,2],[45,2],[45,2],
-    [50,2],[45,2],[50,2],[45,2]
-  ];
-  var piratesEv = null;
-  function piratesBuild() {
-    if (piratesEv) return piratesEv;
-    var lead = [], bass = [], t = 0;
-    PIRATES_LEAD.forEach(function (e) { if (e[0]) lead.push({ t: t, midi: e[0], dur: e[1] }); t += e[1]; });
-    t = 0;
-    PIRATES_BASS.forEach(function (e) { if (e[0]) bass.push({ t: t, midi: e[0], dur: e[1] }); t += e[1]; });
-    piratesEv = { lead: lead, bass: bass };
-    return piratesEv;
-  }
-  function piratesLead(midi, when, durE8) {
-    var f = 440 * Math.pow(2, (midi - 69) / 12);
-    var o1 = actx.createOscillator(); o1.type = 'square'; o1.frequency.value = f;
-    var o2 = actx.createOscillator(); o2.type = 'square'; o2.frequency.value = f; o2.detune.value = 9;
-    var flt = actx.createBiquadFilter(); flt.type = 'lowpass'; flt.frequency.value = 2400;
-    var g = actx.createGain();
-    var dur = durE8 * PIRATES_E8;
-    g.gain.setValueAtTime(0.0001, when);
-    g.gain.exponentialRampToValueAtTime(0.055, when + 0.015);
-    g.gain.setValueAtTime(0.055, when + Math.max(0.02, dur - 0.06));
-    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-    o1.connect(flt); o2.connect(flt); flt.connect(g); g.connect(music.bus);
-    o1.start(when); o1.stop(when + dur + 0.02);
-    o2.start(when); o2.stop(when + dur + 0.02);
-  }
-  function piratesBass(midi, when, durE8) {
-    var f = 440 * Math.pow(2, (midi - 69) / 12);
-    var osc = actx.createOscillator(); osc.type = 'triangle'; osc.frequency.value = f;
-    var g = actx.createGain();
-    var dur = durE8 * PIRATES_E8;
-    g.gain.setValueAtTime(0.0001, when);
-    g.gain.exponentialRampToValueAtTime(0.07, when + 0.02);
-    g.gain.exponentialRampToValueAtTime(0.0001, when + dur);
-    osc.connect(g); g.connect(music.bus);
-    osc.start(when); osc.stop(when + dur + 0.02);
-  }
-  function piratesHat(when) {
-    var len = Math.floor(actx.sampleRate * 0.03);
-    var buf = actx.createBuffer(1, len, actx.sampleRate);
-    var d = buf.getChannelData(0);
-    for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
-    var src = actx.createBufferSource(); src.buffer = buf;
-    var f = actx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 6500;
-    var g = actx.createGain();
-    g.gain.setValueAtTime(0.018, when);
-    g.gain.exponentialRampToValueAtTime(0.001, when + 0.03);
-    src.connect(f); f.connect(g); g.connect(music.bus);
-    src.start(when);
-  }
-  function piratesSchedule() {
-    var ev = piratesBuild();
-    var loopDur = PIRATES_LOOP * PIRATES_E8;
-    while (music.nextTime < actx.currentTime + 1.2) {
-      var cycle = Math.floor(music.pi8 / PIRATES_LOOP);
-      var pos = music.pi8 % PIRATES_LOOP;
-      var when = music.loopStart + cycle * loopDur + pos * PIRATES_E8;
-      for (var i = 0; i < ev.lead.length; i++) if (ev.lead[i].t === pos) piratesLead(ev.lead[i].midi, when, ev.lead[i].dur);
-      for (var j = 0; j < ev.bass.length; j++) if (ev.bass[j].t === pos) piratesBass(ev.bass[j].midi, when, ev.bass[j].dur);
-      if (pos % 2 === 0) piratesHat(when);
-      music.pi8++;
-      music.nextTime = music.loopStart + Math.floor(music.pi8 / PIRATES_LOOP) * loopDur + (music.pi8 % PIRATES_LOOP) * PIRATES_E8;
-    }
-  }
   function musicSchedule() {
     // планируем на ~1,2 с вперёд, чтобы звук шёл ровно, без задержек кадра
     // переборы: шаг ~0,5 с, неторопливое блуждание по пентатонике
@@ -788,19 +698,12 @@
     if (!music.pad.length) musicPadStart();
     else music.pad.forEach(function (p) { p.g.gain.setTargetAtTime(p.level, ctx.currentTime, 1.5); });
     if (music.timerId) { clearInterval(music.timerId); music.timerId = null; }
-    if (state.melody === 'pirates') {
-      music.loopStart = ctx.currentTime + 0.15;
-      music.pi8 = 0;
-      music.nextTime = music.loopStart;
-      music.timerId = setInterval(piratesSchedule, 300);
-    } else {
-      music.stepAt = ctx.currentTime + 0.2;
-      music.step = 0;
-      music.arpIdx = 4;
-      music.fluteAt = ctx.currentTime + 3.5;
-      music.birdAt = ctx.currentTime + 6.5;
-      music.timerId = setInterval(musicSchedule, 400);
-    }
+    music.stepAt = ctx.currentTime + 0.2;
+    music.step = 0;
+    music.arpIdx = 4;
+    music.fluteAt = ctx.currentTime + 3.5;
+    music.birdAt = ctx.currentTime + 6.5;
+    music.timerId = setInterval(musicSchedule, 400);
   }
   function musicStop() {
     music.on = false;
@@ -1047,9 +950,6 @@
     document.querySelectorAll('#musicSeg button').forEach(function (b) {
       b.classList.toggle('active', (b.dataset.music === 'on') === state.music);
     });
-    document.querySelectorAll('#melodySeg button').forEach(function (b) {
-      b.classList.toggle('active', b.dataset.melody === state.melody);
-    });
     els.modeNote.textContent = MODE_NOTES[state.mode];
   }
 
@@ -1140,14 +1040,6 @@
     localStorage.setItem('los_music', state.music ? 'on' : 'off');
     syncMenu();
     if (state.music) musicStart(); else musicStop();
-  });
-  document.getElementById('melodySeg').addEventListener('click', function (e) {
-    var btn = e.target.closest('button'); if (!btn) return;
-    if (btn.dataset.melody === state.melody) return;
-    state.melody = btn.dataset.melody;
-    localStorage.setItem('los_melody', state.melody);
-    syncMenu();
-    if (music.on) { musicStop(); musicStart(); }  // перезапускаем с новой мелодией
   });
   /* Громкость музыки: ползунок 0–100, меняет общий гейн музыкальной шины */
   var volumeRange = document.getElementById('volumeRange');

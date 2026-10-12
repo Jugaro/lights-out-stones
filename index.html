@@ -151,6 +151,11 @@
   .cell.black .face.white { opacity: 0; }
   .cell.black .face.black { opacity: 1; }
   .cell.pressed .stone { animation: flipPulse 0.28s ease; }
+  /* Подсветка линии хода при наведении */
+  .cell.hint .stone {
+    filter: brightness(1.14);
+    box-shadow: 0 0 0 2px rgba(255, 246, 214, 0.9), 0 0 16px 2px rgba(255, 235, 175, 0.75);
+  }
   @keyframes flipPulse {
     0% { transform: scaleY(1); }
     45% { transform: scaleY(0.55); }
@@ -765,9 +770,30 @@
         })(r, c);
       }
     }
+    clearHint();
     els.moves.textContent = state.moves;
     els.undo.disabled = state.history.length === 0;
   }
+
+  /* ---------- Подсветка линии хода при наведении ---------- */
+  function clearHint() {
+    var h = els.board.querySelectorAll('.cell.hint');
+    for (var i = 0; i < h.length; i++) h[i].classList.remove('hint');
+  }
+  els.board.addEventListener('mouseover', function (e) {
+    var cell = e.target.closest('.cell');
+    if (!cell || state.locked || state.paused) return;
+    var cells = els.board.children;
+    var idx = Array.prototype.indexOf.call(cells, cell);
+    if (idx < 0) return;
+    clearHint();
+    var n = state.n;
+    // подсвечиваем ровно те камни, которые перевернёт нажатие
+    L.pressMask(n, Math.floor(idx / n), idx % n, state.mode).forEach(function (i2) {
+      cells[i2].classList.add('hint');
+    });
+  });
+  els.board.addEventListener('mouseleave', clearHint);
 
   function renderBest() {
     var b = getBest(state.n);

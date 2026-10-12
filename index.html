@@ -53,7 +53,7 @@
     font-style: italic;
     opacity: 0.65;
     font-size: clamp(13px, 3.2vw, 16px);
-    margin-top: 14px;
+    margin: 12px 0 2px;
     letter-spacing: 0.1em;
     text-align: center;
   }
@@ -315,7 +315,7 @@
 </head>
 <body>
 
-<h1>Восточная головоломка</h1>
+<h1>Lights Out Stones</h1>
 
 <div class="controls">
   <div class="seg" id="levelSeg">
@@ -336,6 +336,7 @@
   <div><b>РЕКОРД</b><span id="best">—</span></div>
 </div>
 
+<div class="rule-hint" id="ruleHint">Переверни все чёрные камни белой стороной вверх</div>
 <div class="scene">
   <div class="board-frame">
     <div class="board" id="board"></div>
@@ -346,7 +347,6 @@
     <div class="holder"></div>
   </div>
 </div>
-<div class="rule-hint" id="ruleHint">переверни все белые камни</div>
 
 <!-- Победа -->
 <div class="overlay" id="winOverlay">
@@ -367,6 +367,7 @@
   <div class="card">
     <h2>СТАТИСТИКА</h2>
     <div class="zen">список побед</div>
+    <div id="dailyBody"></div>
     <div id="winsBody"></div>
     <div class="row">
       <button class="btn small" id="resetStatsBtn">Сбросить рекорды</button>
@@ -504,6 +505,7 @@
     winRecord: document.getElementById('winRecord'),
     stats: document.getElementById('statsOverlay'),
     winsBody: document.getElementById('winsBody'),
+    dailyBody: document.getElementById('dailyBody'),
     pause: document.getElementById('pauseOverlay'),
     menu: document.getElementById('menuOverlay'),
     modeNote: document.getElementById('modeNote'),
@@ -777,6 +779,19 @@
     var d = new Date();
     return 'los_daily_' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
   }
+  /* История пройденных вызовов дня: один лучший результат на дату */
+  function getDailyHistory() {
+    try { return JSON.parse(localStorage.getItem('los_daily_history')) || []; }
+    catch (e) { return []; }
+  }
+  function recordDailyHistory(time, moves) {
+    var date = new Date().toISOString().slice(0, 10);
+    var list = getDailyHistory().filter(function (r) { return r.date !== date; });
+    list.push({ date: date, time: time, moves: moves });
+    list.sort(function (a, b) { return b.date < a.date ? -1 : 1; });   // новые сверху
+    if (list.length > 100) list.length = 100;
+    localStorage.setItem('los_daily_history', JSON.stringify(list));
+  }
   // детерминированный ГПСЧ из даты — доска одинаковая у всех в этот день
   function mulberry32(a) {
     return function () {
@@ -833,8 +848,8 @@
     els.win.classList.remove('show');
     els.pause.classList.remove('show');
     els.ruleHint.textContent = color === L.BLACK
-      ? 'переверни все чёрные камни'
-      : 'переверни все белые камни';
+      ? 'Переверни все белые камни чёрной стороной вверх'
+      : 'Переверни все чёрные камни белой стороной вверх';
     paintGrid();
     render();
     if (state.daily) {
@@ -877,6 +892,7 @@
       var prevRec = prev ? JSON.parse(prev) : null;
       var isRecord = !prevRec || state.elapsed < prevRec.time;
       if (isRecord) localStorage.setItem(key, JSON.stringify({ time: state.elapsed, moves: state.moves }));
+      recordDailyHistory(isRecord ? state.elapsed : prevRec.time, isRecord ? state.moves : prevRec.moves);
       updateDailyBtn();
       els.winZen.textContent = 'вызов дня пройден';
       els.winDetails.textContent = 'Вызов дня · ' +
@@ -923,6 +939,17 @@
   }
 
   function renderStats() {
+    // пройденные вызовы дня — отдельным блоком сверху
+    var daily = getDailyHistory();
+    if (daily.length) {
+      var rows = daily.map(function (r) {
+        return '<tr><td>' + r.date + '</td><td>' + fmtTime(r.time) + '</td><td>' + r.moves + '</td></tr>';
+      }).join('');
+      els.dailyBody.innerHTML = '<div class="diff-title">Вызов дня</div>' +
+        '<table class="wins"><tr><th>ДАТА</th><th>ВРЕМЯ</th><th>ХОДЫ</th></tr>' + rows + '</table>';
+    } else {
+      els.dailyBody.innerHTML = '';
+    }
     var wins = getWins();
     if (wins.length === 0) {
       els.winsBody.innerHTML = '<div class="empty">Пока нет побед — доска ждёт.</div>';

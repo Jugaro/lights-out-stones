@@ -84,6 +84,7 @@
   .btn:active { transform: scale(0.96); }
   .btn:disabled { opacity: 0.4; cursor: default; }
   .btn.small { font-size: 12.5px; padding: 5px 10px; }
+  .btn.active { background: var(--ink); color: #f5e9d0; }
   /* ---------- Статистика партии ---------- */
   .stats {
     display: flex; gap: 18px; font-size: 15px; margin: 4px 0 12px;
@@ -325,6 +326,7 @@
   <button class="btn small" id="undoBtn">↩ Отменить ход</button>
   <button class="btn small" id="newBtn">Новая игра</button>
   <button class="btn small" id="pauseBtn">⏸ Пауза</button>
+  <button class="btn small" id="dailyBtn">☀ Вызов дня</button>
   <button class="btn small" id="menuBtn">☰ Меню</button>
 </div>
 
@@ -481,6 +483,7 @@
     startedAt: null,
     elapsed: 0,
     locked: false,
+    daily: false,
     paused: false
   };
 
@@ -847,20 +850,61 @@
     els.best.textContent = b === null ? '—' : fmtTime(b);
   }
 
+  /* ---------- Ежедневный вызов: одна доска на день для всех игроков ---------- */
+  function dailyKey() {
+    var d = new Date();
+    return 'los_daily_' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+  // детерминированный ГПСЧ из даты — доска одинаковая у всех в этот день
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function dailySeed() {
+    var d = new Date();
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  }
+  var dailyBtn = document.getElementById('dailyBtn');
+  function updateDailyBtn() {
+    var rec = localStorage.getItem(dailyKey());
+    dailyBtn.textContent = rec ? '☑ Вызов дня' : '☀ Вызов дня';
+    dailyBtn.classList.toggle('active', state.daily === true);
+  }
+
   /* ---------- Логика партии ---------- */
   function newGame() {
     stopTimer();
+    var rng = Math.random;
     var n = state.n;
+    var mode = state.mode;
     var color = targetColor();
-    var range = PRESSES[state.mode][state.diff][n];
+    var range = PRESSES[mode][state.diff][n];
+    var subtitle;
+    if (state.daily) {
+      // вызов дня: фиксированные параметры, доска от даты
+      n = 5; mode = 'rays'; color = L.WHITE;
+      range = [6, 6];
+      rng = mulberry32(dailySeed());
+      subtitle = '◈ вызов дня · одна доска для всех игроков · ' + new Date().toLocaleDateString('ru-RU');
+    } else {
+      subtitle = state.target === 'black'
+        ? '◈ восточная головоломка · переверните все камни в чёрные'
+        : '◈ восточная головоломка · переверните все камни в белые';
+    }
     // защита от случайно «пустой» генерации (нажатия сократились до нуля):
     // перегенерируем, пока стартовая позиция не станет нерешённой
     var board, num, tries = 0;
     do {
-      num = range[0] + Math.floor(Math.random() * (range[1] - range[0] + 1));
-      board = L.generateBoard(n, num, Math.random, state.mode, color);
+      num = range[0] + Math.floor(rng() * (range[1] - range[0] + 1));
+      board = L.generateBoard(n, num, rng, mode, color);
       tries++;
     } while (L.isWin(board, color) && tries < 20);
+    state.n = n;
+    state.mode = mode;
     state.board = board;
     state.moves = 0;
     state.history = [];
@@ -872,12 +916,16 @@
     updateIncense();
     els.win.classList.remove('show');
     els.pause.classList.remove('show');
-    els.subtitle.textContent = state.target === 'black'
-      ? '◈ восточная головоломка · переверните все камни в чёрные'
-      : '◈ восточная головоломка · переверните все камни в белые';
+    els.subtitle.textContent = subtitle;
     paintGrid();
     render();
-    renderBest();
+    if (state.daily) {
+      var rec = localStorage.getItem(dailyKey());
+      els.best.textContent = rec ? fmtTime(JSON.parse(rec).time) : '—';
+    } else {
+      renderBest();
+    }
+    updateDailyBtn();
   }
 
   function onPress(r, c) {
@@ -904,6 +952,24 @@
     stopTimer();
     sndWin();
     var n = state.n;
+    if (state.daily) {
+      // вызов дня: записываем лучший результат сегодня, не трогая обычную статистику
+      var key = dailyKey();
+      var prev = localStorage.getItem(key);
+      var prevRec = prev ? JSON.parse(prev) : null;
+      var isRecord = !prevRec || state.elapsed < prevRec.time;
+      if (isRecord) localStorage.setItem(key, JSON.stringify({ time: state.elapsed, moves: state.moves }));
+      updateDailyBtn();
+      els.winZen.textContent = 'вызов дня пройден';
+      els.winDetails.textContent = 'Вызов дня · ' +
+        fmtTime(state.elapsed) + ' · ' + state.moves + ' ходов';
+      els.winRecord.textContent = isRecord
+        ? (prevRec ? '✦ Лучше вчерашнего: ' + fmtTime(prevRec.time) + ' ✦' : '✦ Первое прохождение сегодня! ✦')
+        : 'Сегодня лучше: ' + fmtTime(prevRec.time);
+      els.best.textContent = fmtTime(isRecord ? state.elapsed : prevRec.time);
+      setTimeout(function () { els.win.classList.add('show'); }, 450);
+      return;
+    }
     var prev = getBest(n);
     var isRecord = prev === null || state.elapsed < prev;
     if (isRecord) localStorage.setItem(bestKey(n), String(state.elapsed));
@@ -1000,6 +1066,7 @@
   document.getElementById('levelSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
     if (btn.disabled) return;
+    state.daily = false;
     state.n = Number(btn.dataset.n);
     var seg = document.getElementById('levelSeg');
     seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b === btn); });
@@ -1046,7 +1113,8 @@
   });
   document.getElementById('modeSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
-    if (btn.dataset.mode === state.mode) return;
+    if (btn.dataset.mode === state.mode && !state.daily) return;
+    state.daily = false;
     state.mode = btn.dataset.mode;
     localStorage.setItem('los_mode', state.mode);
     syncMenu();
@@ -1054,7 +1122,8 @@
   });
   document.getElementById('diffSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
-    if (btn.dataset.diff === state.diff) return;
+    if (btn.dataset.diff === state.diff && !state.daily) return;
+    state.daily = false;
     state.diff = btn.dataset.diff;
     localStorage.setItem('los_diff', state.diff);
     syncMenu();
@@ -1062,10 +1131,16 @@
   });
   document.getElementById('targetSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
-    if (btn.dataset.target === state.target) return;
+    if (btn.dataset.target === state.target && !state.daily) return;
+    state.daily = false;
     state.target = btn.dataset.target;
     localStorage.setItem('los_target', state.target);
     syncMenu();
+    newGame();
+  });
+  /* Вызов дня: фиксированная доска от даты */
+  dailyBtn.addEventListener('click', function () {
+    state.daily = true;
     newGame();
   });
   document.getElementById('soundSeg').addEventListener('click', function (e) {
@@ -1139,6 +1214,7 @@
   syncMenu();
   renderLevels();
   updateIncense();
+  updateDailyBtn();
   newGame();
 })();
 </script>

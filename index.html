@@ -268,6 +268,7 @@
   .card .row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
   .share-panel { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
   .share-panel[hidden] { display: none; }
+  .row.menu-main { flex-direction: column; align-items: stretch; margin-top: 20px; }
   table.wins { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
   table.wins th, table.wins td { padding: 5px 6px; border-bottom: 1px solid rgba(92,58,28,0.25); }
   table.wins th { opacity: 0.6; font-weight: normal; letter-spacing: 0.06em; font-size: 11.5px; }
@@ -416,7 +417,21 @@
 <div class="overlay" id="menuOverlay">
   <div class="card">
     <h2>МЕНЮ</h2>
-    <div class="zen">настройки игры</div>
+    <div class="zen">огни доски ждут решения</div>
+    <div class="row menu-main">
+      <button class="btn" id="menuNewBtn">Новая игра</button>
+      <button class="btn" id="menuSettingsBtn">Настройки</button>
+      <button class="btn" id="menuStatsBtn">Статистика</button>
+      <button class="btn small" id="closeMenuBtn">Закрыть</button>
+    </div>
+  </div>
+</div>
+
+<!-- Настройки -->
+<div class="overlay" id="settingsOverlay">
+  <div class="card">
+    <h2>НАСТРОЙКИ</h2>
+    <div class="zen">как играет доска</div>
     <div class="menu-row">
       <div class="menu-label">Режим</div>
       <div class="seg" id="modeSeg">
@@ -454,6 +469,10 @@
       </div>
     </div>
     <div class="menu-row">
+      <div class="menu-label">Громкость музыки</div>
+      <input type="range" id="volumeRange" class="vol" min="0" max="100" step="1" aria-label="Громкость музыки">
+    </div>
+    <div class="menu-row">
       <div class="menu-label">Подсветка хода</div>
       <div class="seg" id="hintSeg">
         <button data-hint="on" class="active">Вкл</button>
@@ -461,14 +480,15 @@
       </div>
     </div>
     <div class="menu-row">
-      <div class="menu-label">Громкость музыки</div>
-      <input type="range" id="volumeRange" class="vol" min="0" max="100" step="1" aria-label="Громкость музыки">
+      <div class="menu-label">Виброотклик</div>
+      <div class="seg" id="vibroSeg">
+        <button data-vibro="on" class="active">Вкл</button>
+        <button data-vibro="off">Выкл</button>
+      </div>
     </div>
     <div class="menu-note" id="modeNote"></div>
     <div class="row">
-      <button class="btn small" id="menuStatsBtn">Статистика</button>
-      <button class="btn small" id="menuNewBtn">Новая игра</button>
-      <button class="btn" id="closeMenuBtn">Закрыть</button>
+      <button class="btn" id="closeSettingsBtn">Готово</button>
     </div>
   </div>
 </div>
@@ -508,6 +528,7 @@
     sound: localStorage.getItem('los_sound') !== 'off',
     music: localStorage.getItem('los_music') === 'on',
     hint: localStorage.getItem('los_hint') !== 'off',
+    vibro: localStorage.getItem('los_vibro') !== 'off',
     volume: Math.min(1, Math.max(0, Number(localStorage.getItem('los_volume')) || 0.8)),
     unlocked: Math.max(3, Number(localStorage.getItem('los_unlocked')) || 3),
     board: [],
@@ -523,6 +544,11 @@
   };
 
   function targetColor() { return state.target === 'black' ? L.BLACK : L.WHITE; }
+
+  /* Виброотклик: короткий толчок на ход, двойной на победу */
+  function vibro(p) {
+    if (state.vibro && navigator.vibrate) { try { navigator.vibrate(p); } catch (e) {} }
+  }
 
   // если выбранный размер ещё не открыт — начинаем с максимально доступного
   if (state.n > state.unlocked) state.n = state.unlocked;
@@ -541,6 +567,7 @@
     dailyBody: document.getElementById('dailyBody'),
     pause: document.getElementById('pauseOverlay'),
     menu: document.getElementById('menuOverlay'),
+    settings: document.getElementById('settingsOverlay'),
     modeNote: document.getElementById('modeNote'),
     ruleHint: document.getElementById('ruleHint'),
     winZen: document.getElementById('winZen')
@@ -977,6 +1004,7 @@
     state.board = L.applyPress(state.board, state.n, r, c, state.mode);
     state.moves++;
     sndFlip();
+    vibro(30);
     render(r * state.n + c);
     saveSession();
     if (L.isWin(state.board, targetColor())) onWin();
@@ -997,6 +1025,7 @@
     state.locked = true;
     stopTimer();
     sndWin();
+    vibro([60, 60, 140]);
     clearSession();
     var n = state.n;
     if (state.daily) {
@@ -1187,6 +1216,9 @@
     document.querySelectorAll('#hintSeg button').forEach(function (b) {
       b.classList.toggle('active', (b.dataset.hint === 'on') === state.hint);
     });
+    document.querySelectorAll('#vibroSeg button').forEach(function (b) {
+      b.classList.toggle('active', (b.dataset.vibro === 'on') === state.vibro);
+    });
     els.modeNote.textContent = MODE_NOTES[state.mode];
   }
 
@@ -1233,6 +1265,13 @@
   });
   document.getElementById('closeMenuBtn').addEventListener('click', function () {
     els.menu.classList.remove('show');
+  });
+  document.getElementById('menuSettingsBtn').addEventListener('click', function () {
+    syncMenu();
+    els.settings.classList.add('show');   // меню остаётся под настройками
+  });
+  document.getElementById('closeSettingsBtn').addEventListener('click', function () {
+    els.settings.classList.remove('show');
   });
   document.getElementById('menuNewBtn').addEventListener('click', function () {
     els.menu.classList.remove('show');
@@ -1298,6 +1337,13 @@
     if (!state.hint) clearHint();
     syncMenu();
   });
+  document.getElementById('vibroSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    state.vibro = btn.dataset.vibro === 'on';
+    localStorage.setItem('los_vibro', state.vibro ? 'on' : 'off');
+    syncMenu();
+    if (state.vibro) vibro(40);   // сразу показать, что включилось
+  });
   /* Громкость музыки: ползунок 0–100, меняет общий гейн музыкальной шины */
   var volumeRange = document.getElementById('volumeRange');
   function paintVolume() {
@@ -1333,7 +1379,7 @@
     localStorage.removeItem('los_wins');
     renderStats(); renderBest();
   });
-  [els.win, els.stats, els.pause, els.menu].forEach(function (ov) {
+  [els.win, els.stats, els.pause, els.menu, els.settings].forEach(function (ov) {
     ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('show'); });
   });
 

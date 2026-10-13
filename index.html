@@ -266,9 +266,6 @@
   .card .big { font-size: 20px; margin: 10px 0; }
   .card .record { color: #9a5b12; font-size: 15px; margin-bottom: 10px; min-height: 20px; }
   .card .row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
-  .share-icons { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
-  .share-icons .ico { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 76px; padding: 8px 10px 6px; font-size: 19px; line-height: 1; }
-  .share-icons .ico small { font-size: 10.5px; letter-spacing: 0.04em; opacity: 0.75; }
   /* Плашка «коснитесь для звука»: браузеры ждут первого жеста перед аудио */
   .sound-hint {
     position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
@@ -354,10 +351,7 @@
     <button data-n="5" class="active">5×5</button>
     <button data-n="7">7×7</button>
   </div>
-  <button class="btn small" id="undoBtn">↩ Отменить ход</button>
-  <button class="btn small" id="newBtn">Новая игра</button>
   <button class="btn small" id="pauseBtn">⏸ Пауза</button>
-  <button class="btn small" id="dailyBtn">☀ Вызов дня</button>
   <button class="btn small" id="menuBtn">☰ Меню</button>
 </div>
 
@@ -393,11 +387,6 @@
       <button class="btn small" id="shareBtn">⤴ Поделиться</button>
       <button class="btn" id="nextBtn">Следующий уровень</button>
     </div>
-    <div class="share-icons" id="shareIcons">
-      <button class="btn small ico" data-share="tg" title="Отправить в Telegram" aria-label="Отправить в Telegram">✈<small>Telegram</small></button>
-      <button class="btn small ico" data-share="wa" title="Отправить в WhatsApp" aria-label="Отправить в WhatsApp">🟢<small>WhatsApp</small></button>
-      <button class="btn small ico" data-share="vk" title="Отправить ВКонтакте" aria-label="Отправить ВКонтакте">✌<small>ВКонтакте</small></button>
-    </div>
   </div>
 </div>
 
@@ -420,8 +409,9 @@
   <div class="card">
     <h2>ПАУЗА</h2>
     <div class="zen">пусть доска подождёт — мысль догонит</div>
-    <div class="row">
+    <div class="row menu-main">
       <button class="btn" id="resumeBtn">Продолжить</button>
+      <button class="btn small" id="undoBtn">↩ Отменить ход</button>
       <button class="btn" id="pauseMenuBtn">Меню</button>
     </div>
   </div>
@@ -435,6 +425,7 @@
     <div class="row menu-main">
       <button class="btn" id="menuResumeBtn" hidden>Продолжить</button>
       <button class="btn" id="menuNewBtn">Новая игра</button>
+      <button class="btn small" id="dailyBtn">☀ Вызов дня</button>
       <button class="btn" id="menuSettingsBtn">Настройки</button>
       <button class="btn" id="menuStatsBtn">Статистика</button>
       <button class="btn small" id="closeMenuBtn">Закрыть</button>
@@ -845,26 +836,39 @@
     els.undo.disabled = state.history.length === 0;
   }
 
-  /* ---------- Подсветка линии хода при наведении ---------- */
+  /* ---------- Подсветка линии хода: наведение мышью или палец на камне ---------- */
   function clearHint() {
     var h = els.board.querySelectorAll('.cell.hint');
     for (var i = 0; i < h.length; i++) h[i].classList.remove('hint');
   }
-  els.board.addEventListener('mouseover', function (e) {
-    var cell = e.target.closest('.cell');
+  function showHintFor(cell) {
     clearHint();
     if (!cell || !state.hint || state.locked || state.paused) return;
     var cells = els.board.children;
     var idx = Array.prototype.indexOf.call(cells, cell);
     if (idx < 0) return;
-    clearHint();
     var n = state.n;
     // подсвечиваем ровно те камни, которые перевернёт нажатие
     L.pressMask(n, Math.floor(idx / n), idx % n, state.mode).forEach(function (i2) {
       cells[i2].classList.add('hint');
     });
+  }
+  els.board.addEventListener('mouseover', function (e) {
+    showHintFor(e.target.closest('.cell'));
   });
   els.board.addEventListener('mouseleave', clearHint);
+  /* Телефон: зажал камень — видишь, что перевернётся, как hover на компьютере */
+  els.board.addEventListener('touchstart', function (e) {
+    var t = e.target.closest && e.target.closest('.cell');
+    if (t) showHintFor(t);
+  }, { passive: true });
+  els.board.addEventListener('touchmove', function (e) {
+    if (!e.touches.length) return;
+    var el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+    showHintFor(el && el.closest ? el.closest('.cell') : null);
+  }, { passive: true });
+  els.board.addEventListener('touchend', clearHint);
+  els.board.addEventListener('touchcancel', clearHint);
 
   function renderBest() {
     var b = getBest(state.n);
@@ -1138,16 +1142,6 @@
       } else { legacyCopy(text); done(); }
     }
   }
-  /* Прямая отправка в мессенджер — иконки под кнопкой «Поделиться» */
-  function doShare(kind) {
-    var text = buildShareText();
-    if (!text) return;
-    var url = 'https://jugaro.github.io/lights-out-stones/';
-    var eT = encodeURIComponent(text), eU = encodeURIComponent(url);
-    if (kind === 'tg') window.open('https://t.me/share/url?url=' + eU + '&text=' + eT, '_blank');
-    else if (kind === 'wa') window.open('https://wa.me/?text=' + eT + '%20' + eU, '_blank');
-    else if (kind === 'vk') window.open('https://vk.com/share.php?url=' + eU + '&title=' + eT, '_blank');
-  }
 
   /* ---------- Статистика ---------- */
   var DIFF_LABELS = { easy: 'Легко', medium: 'Средне', hard: 'Тяжело' };
@@ -1251,12 +1245,8 @@
     newGame();
   });
   els.undo.addEventListener('click', onUndo);
-  document.getElementById('newBtn').addEventListener('click', newGame);
   document.getElementById('againBtn').addEventListener('click', newGame);
   document.getElementById('shareBtn').addEventListener('click', shareResult);
-  document.querySelectorAll('#shareIcons button').forEach(function (b) {
-    b.addEventListener('click', function () { doShare(b.dataset.share); });
-  });
   document.getElementById('nextBtn').addEventListener('click', function () {
     var i = LEVELS.indexOf(state.n);
     state.n = LEVELS[(i + 1) % LEVELS.length];
@@ -1333,6 +1323,7 @@
   });
   /* Вызов дня: фиксированная доска от даты */
   dailyBtn.addEventListener('click', function () {
+    els.menu.classList.remove('show');
     state.daily = true;
     newGame();
   });

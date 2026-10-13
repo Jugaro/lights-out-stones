@@ -433,6 +433,7 @@
     <h2>МЕНЮ</h2>
     <div class="zen">огни доски ждут решения</div>
     <div class="row menu-main">
+      <button class="btn" id="menuResumeBtn" hidden>Продолжить</button>
       <button class="btn" id="menuNewBtn">Новая игра</button>
       <button class="btn" id="menuSettingsBtn">Настройки</button>
       <button class="btn" id="menuStatsBtn">Статистика</button>
@@ -1234,6 +1235,8 @@
     document.querySelectorAll('#vibroSeg button').forEach(function (b) {
       b.classList.toggle('active', (b.dataset.vibro === 'on') === state.vibro);
     });
+    // «Продолжить» в меню — только пока игра на паузе и не завершена
+    document.getElementById('menuResumeBtn').hidden = !(state.paused && !state.locked);
     els.modeNote.textContent = MODE_NOTES[state.mode];
   }
 
@@ -1287,6 +1290,10 @@
   });
   document.getElementById('closeSettingsBtn').addEventListener('click', function () {
     els.settings.classList.remove('show');
+  });
+  document.getElementById('menuResumeBtn').addEventListener('click', function () {
+    els.menu.classList.remove('show');
+    resumeGame();
   });
   document.getElementById('menuNewBtn').addEventListener('click', function () {
     els.menu.classList.remove('show');

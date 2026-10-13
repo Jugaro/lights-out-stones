@@ -362,6 +362,7 @@
     <div class="record" id="winRecord"></div>
     <div class="row">
       <button class="btn" id="againBtn">Играть снова</button>
+      <button class="btn small" id="shareBtn">⤴ Поделиться</button>
       <button class="btn" id="nextBtn">Следующий уровень</button>
     </div>
   </div>
@@ -492,6 +493,7 @@
     volume: Math.min(1, Math.max(0, Number(localStorage.getItem('los_volume')) || 0.8)),
     unlocked: Math.max(3, Number(localStorage.getItem('los_unlocked')) || 3),
     board: [],
+    startBoard: null,
     moves: 0,
     history: [],
     timerId: null,
@@ -872,6 +874,7 @@
     state.n = n;
     state.mode = mode;
     state.board = board;
+    state.startBoard = board.slice();
     state.moves = 0;
     state.history = [];
     state.elapsed = 0;
@@ -896,6 +899,58 @@
     updateDailyBtn();
   }
 
+  /* ---------- Автосохранение партии: закрыл вкладку — партия ждёт ---------- */
+  function currentElapsed() {
+    return state.startedAt
+      ? state.elapsed + Math.floor((Date.now() - state.startedAt) / 1000)
+      : state.elapsed;
+  }
+  function saveSession() {
+    if (state.locked) return;   // завершённую партию не сохраняем
+    try {
+      localStorage.setItem('los_session', JSON.stringify({
+        n: state.n, mode: state.mode, diff: state.diff, target: state.target,
+        board: state.board, start: state.startBoard, moves: state.moves,
+        history: state.history.slice(-30), elapsed: currentElapsed(),
+        daily: state.daily, dailyDate: state.daily ? dailyKey() : null
+      }));
+    } catch (e) {}
+  }
+  function clearSession() {
+    localStorage.removeItem('los_session');
+  }
+  function restoreSession() {
+    var s;
+    try { s = JSON.parse(localStorage.getItem('los_session')); }
+    catch (e) { s = null; }
+    if (!s || !s.board || s.board.length !== s.n * s.n) return false;
+    // вызов дня вчерашний — доска обновилась, сессию выбрасываем
+    if (s.daily && s.dailyDate !== dailyKey()) { clearSession(); return false; }
+    state.n = s.n; state.mode = s.mode; state.diff = s.diff; state.target = s.target;
+    state.board = s.board; state.startBoard = s.start || s.board.slice();
+    state.moves = s.moves || 0; state.history = s.history || [];
+    state.elapsed = s.elapsed || 0; state.daily = !!s.daily;
+    state.locked = false; state.paused = false;
+    pauseBtn.textContent = '⏸ Пауза';
+    els.time.textContent = fmtTime(state.elapsed);
+    els.win.classList.remove('show');
+    els.ruleHint.textContent = targetColor() === L.BLACK
+      ? 'Переверни все белые камни чёрной стороной вверх'
+      : 'Переверни все чёрные камни белой стороной вверх';
+    document.querySelectorAll('#levelSeg button').forEach(function (b) {
+      b.classList.toggle('active', Number(b.dataset.n) === state.n);
+    });
+    renderLevels(); paintGrid(); render(); syncMenu(); updateIncense();
+    if (state.daily) {
+      var rec = localStorage.getItem(dailyKey());
+      els.best.textContent = rec ? fmtTime(JSON.parse(rec).time) : '—';
+    } else {
+      renderBest();
+    }
+    updateDailyBtn();
+    return true;
+  }
+
   function onPress(r, c) {
     if (state.locked || state.paused) return;
     if (state.moves === 0 && !state.startedAt) startTimer();
@@ -904,6 +959,7 @@
     state.moves++;
     sndFlip();
     render(r * state.n + c);
+    saveSession();
     if (L.isWin(state.board, targetColor())) onWin();
   }
 
@@ -913,12 +969,16 @@
     state.moves = Math.max(0, state.moves - 1);
     sndClick();
     render();
+    saveSession();
   }
 
+  /* ---------- Победа ---------- */
+  var lastWin = null;
   function onWin() {
     state.locked = true;
     stopTimer();
     sndWin();
+    clearSession();
     var n = state.n;
     if (state.daily) {
       // вызов дня: записываем лучший результат сегодня, не трогая обычную статистику
@@ -928,6 +988,7 @@
       var isRecord = !prevRec || state.elapsed < prevRec.time;
       if (isRecord) localStorage.setItem(key, JSON.stringify({ time: state.elapsed, moves: state.moves }));
       recordDailyHistory(isRecord ? state.elapsed : prevRec.time, isRecord ? state.moves : prevRec.moves);
+      lastWin = { daily: true, n: state.n, time: state.elapsed, moves: state.moves, start: state.startBoard };
       updateDailyBtn();
       els.winZen.textContent = 'вызов дня пройден';
       els.winDetails.textContent = 'Вызов дня · ' +
@@ -943,6 +1004,7 @@
     var isRecord = prev === null || state.elapsed < prev;
     if (isRecord) localStorage.setItem(bestKey(n), String(state.elapsed));
     addWin({ date: new Date().toISOString().slice(0, 10), level: n, mode: state.mode, diff: state.diff, target: state.target, time: state.elapsed, moves: state.moves });
+    lastWin = { daily: false, n: n, mode: state.mode, diff: state.diff, time: state.elapsed, moves: state.moves };
     // прошли уровень — открываем следующий
     var nextLevel = LEVELS[LEVELS.indexOf(n) + 1];
     if (nextLevel && nextLevel > state.unlocked) {
@@ -958,6 +1020,47 @@
     els.winRecord.textContent = isRecord ? '✦ Новый рекорд! ✦' : 'Рекорд: ' + fmtTime(prev);
     renderBest();
     setTimeout(function () { els.win.classList.add('show'); }, 450);
+  }
+
+  /* ---------- Поделиться результатом (как сетка в Wordle) ---------- */
+  function buildShareText() {
+    if (!lastWin) return '';
+    var d = new Date();
+    var dateStr = ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear();
+    var lines = [];
+    if (lastWin.daily) {
+      lines.push('Lights Out Stones — Вызов дня · ' + dateStr);
+      if (lastWin.start) {
+        for (var r = 0; r < lastWin.n; r++) {
+          var row = '';
+          for (var c = 0; c < lastWin.n; c++) {
+            row += lastWin.start[r * lastWin.n + c] === L.BLACK ? '⬛' : '⬜';
+          }
+          lines.push(row);
+        }
+      }
+    } else {
+      lines.push('Lights Out Stones · Уровень ' + lastWin.n + '×' + lastWin.n + ' · ' +
+        (lastWin.mode === 'cross' ? 'Крест' : 'Лучи') + ' · ' + (DIFF_LABELS[lastWin.diff] || ''));
+    }
+    lines.push('Победа: ' + fmtTime(lastWin.time) + ' · ' + lastWin.moves + ' ходов');
+    lines.push('https://jugaro.github.io/lights-out-stones/');
+    return lines.join('\n');
+  }
+  function shareResult() {
+    var text = buildShareText();
+    if (!text) return;
+    if (navigator.share) {
+      navigator.share({ title: 'Lights Out Stones', text: text }).catch(function () {});
+    } else if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        var b = document.getElementById('shareBtn');
+        if (!b) return;
+        var t = b.textContent;
+        b.textContent = '✓ Скопировано';
+        setTimeout(function () { b.textContent = t; }, 1600);
+      });
+    }
   }
 
   /* ---------- Статистика ---------- */
@@ -1009,6 +1112,7 @@
     if (state.paused || state.locked) return;
     state.paused = true;
     stopTimer();
+    saveSession();   // вкладку могут закрыть, пока стоит пауза
     document.body.classList.add('paused');
     pauseBtn.textContent = '▶ Продолжить';
     els.pause.classList.add('show');
@@ -1058,6 +1162,7 @@
   els.undo.addEventListener('click', onUndo);
   document.getElementById('newBtn').addEventListener('click', newGame);
   document.getElementById('againBtn').addEventListener('click', newGame);
+  document.getElementById('shareBtn').addEventListener('click', shareResult);
   document.getElementById('nextBtn').addEventListener('click', function () {
     var i = LEVELS.indexOf(state.n);
     state.n = LEVELS[(i + 1) % LEVELS.length];
@@ -1205,7 +1310,7 @@
   renderLevels();
   updateIncense();
   updateDailyBtn();
-  newGame();
+  if (!restoreSession()) newGame();   // есть сохранённая партия — продолжаем её
 })();
 </script>
 </body>

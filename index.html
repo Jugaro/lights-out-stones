@@ -266,8 +266,21 @@
   .card .big { font-size: 20px; margin: 10px 0; }
   .card .record { color: #9a5b12; font-size: 15px; margin-bottom: 10px; min-height: 20px; }
   .card .row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
-  .share-panel { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
-  .share-panel[hidden] { display: none; }
+  .share-icons { display: flex; gap: 10px; justify-content: center; margin-top: 12px; }
+  .share-icons .ico { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 76px; padding: 8px 10px 6px; font-size: 19px; line-height: 1; }
+  .share-icons .ico small { font-size: 10.5px; letter-spacing: 0.04em; opacity: 0.75; }
+  /* Плашка «коснитесь для звука»: браузеры ждут первого жеста перед аудио */
+  .sound-hint {
+    position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%);
+    z-index: 5; padding: 9px 16px; border-radius: 999px;
+    background: rgba(251, 243, 223, 0.94); border: 1px solid var(--line);
+    color: var(--ink); font-size: 13.5px; letter-spacing: 0.05em;
+    box-shadow: 0 6px 18px rgba(40, 22, 5, 0.35);
+    animation: hint-breathe 2.6s ease-in-out infinite;
+    pointer-events: none; white-space: nowrap;
+  }
+  .sound-hint[hidden] { display: none; }
+  @keyframes hint-breathe { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; } }
   .row.menu-main { flex-direction: column; align-items: stretch; margin-top: 20px; }
   table.wins { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
   table.wins th, table.wins td { padding: 5px 6px; border-bottom: 1px solid rgba(92,58,28,0.25); }
@@ -366,6 +379,8 @@
   </div>
 </div>
 
+<div class="sound-hint" id="soundHint" hidden>🔈 коснитесь экрана — зазвучит музыка</div>
+
 <!-- Победа -->
 <div class="overlay" id="winOverlay">
   <div class="card">
@@ -378,11 +393,10 @@
       <button class="btn small" id="shareBtn">⤴ Поделиться</button>
       <button class="btn" id="nextBtn">Следующий уровень</button>
     </div>
-    <div class="share-panel" id="sharePanel" hidden>
-      <button class="btn small" data-share="tg">✈ Telegram</button>
-      <button class="btn small" data-share="wa">🟢 WhatsApp</button>
-      <button class="btn small" data-share="vk">ВКонтакте</button>
-      <button class="btn small" data-share="copy">📋 Скопировать</button>
+    <div class="share-icons" id="shareIcons">
+      <button class="btn small ico" data-share="tg" title="Отправить в Telegram" aria-label="Отправить в Telegram">✈<small>Telegram</small></button>
+      <button class="btn small ico" data-share="wa" title="Отправить в WhatsApp" aria-label="Отправить в WhatsApp">🟢<small>WhatsApp</small></button>
+      <button class="btn small ico" data-share="vk" title="Отправить ВКонтакте" aria-label="Отправить ВКонтакте">✌<small>ВКонтакте</small></button>
     </div>
   </div>
 </div>
@@ -1045,9 +1059,7 @@
         ? (prevRec ? '✦ Лучше вчерашнего: ' + fmtTime(prevRec.time) + ' ✦' : '✦ Первое прохождение сегодня! ✦')
         : 'Сегодня лучше: ' + fmtTime(prevRec.time);
       els.best.textContent = fmtTime(isRecord ? state.elapsed : prevRec.time);
-      var sp = document.getElementById('sharePanel');
-    if (sp) sp.hidden = true;
-    setTimeout(function () { els.win.classList.add('show'); }, 450);
+      setTimeout(function () { els.win.classList.add('show'); }, 450);
       return;
     }
     var prev = getBest(n);
@@ -1069,8 +1081,6 @@
       fmtTime(state.elapsed) + ' · ' + state.moves + ' ходов';
     els.winRecord.textContent = isRecord ? '✦ Новый рекорд! ✦' : 'Рекорд: ' + fmtTime(prev);
     renderBest();
-    var sp = document.getElementById('sharePanel');
-    if (sp) sp.hidden = true;
     setTimeout(function () { els.win.classList.add('show'); }, 450);
   }
 
@@ -1099,21 +1109,6 @@
     lines.push('https://jugaro.github.io/lights-out-stones/');
     return lines.join('\n');
   }
-  function toggleSharePanel() {
-    var p = document.getElementById('sharePanel');
-    if (p) p.hidden = !p.hidden;
-  }
-  function copyShareText(text, btn) {
-    var done = function () {
-      if (!btn) return;
-      var t = btn.textContent;
-      btn.textContent = '✓ Скопировано';
-      setTimeout(function () { btn.textContent = t; }, 1600);
-    };
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text); done(); });
-    } else { legacyCopy(text); done(); }
-  }
   function legacyCopy(text) {
     var ta = document.createElement('textarea');
     ta.value = text;
@@ -1122,7 +1117,28 @@
     try { document.execCommand('copy'); } catch (e) {}
     document.body.removeChild(ta);
   }
-  function doShare(kind, btn) {
+  /* «Поделиться»: системное окно (на телефоне — с иконками приложений),
+     на десктопе без navigator.share — копирование в буфер */
+  function shareResult() {
+    var text = buildShareText();
+    if (!text) return;
+    if (navigator.share) {
+      navigator.share({ title: 'Lights Out Stones', text: text }).catch(function () {});
+    } else {
+      var done = function () {
+        var b = document.getElementById('shareBtn');
+        if (!b) return;
+        var t = b.textContent;
+        b.textContent = '✓ Скопировано';
+        setTimeout(function () { b.textContent = t; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text); done(); });
+      } else { legacyCopy(text); done(); }
+    }
+  }
+  /* Прямая отправка в мессенджер — иконки под кнопкой «Поделиться» */
+  function doShare(kind) {
     var text = buildShareText();
     if (!text) return;
     var url = 'https://jugaro.github.io/lights-out-stones/';
@@ -1130,7 +1146,6 @@
     if (kind === 'tg') window.open('https://t.me/share/url?url=' + eU + '&text=' + eT, '_blank');
     else if (kind === 'wa') window.open('https://wa.me/?text=' + eT + '%20' + eU, '_blank');
     else if (kind === 'vk') window.open('https://vk.com/share.php?url=' + eU + '&title=' + eT, '_blank');
-    else if (kind === 'copy') copyShareText(text, btn);
   }
 
   /* ---------- Статистика ---------- */
@@ -1235,9 +1250,9 @@
   els.undo.addEventListener('click', onUndo);
   document.getElementById('newBtn').addEventListener('click', newGame);
   document.getElementById('againBtn').addEventListener('click', newGame);
-  document.getElementById('shareBtn').addEventListener('click', toggleSharePanel);
-  document.querySelectorAll('#sharePanel button').forEach(function (b) {
-    b.addEventListener('click', function () { doShare(b.dataset.share, b); });
+  document.getElementById('shareBtn').addEventListener('click', shareResult);
+  document.querySelectorAll('#shareIcons button').forEach(function (b) {
+    b.addEventListener('click', function () { doShare(b.dataset.share); });
   });
   document.getElementById('nextBtn').addEventListener('click', function () {
     var i = LEVELS.indexOf(state.n);
@@ -1358,12 +1373,16 @@
     if (music.bus && actx) music.bus.gain.setTargetAtTime(state.volume, actx.currentTime, 0.1);
   });
   /* Музыка и потрескивание: браузеры разрешают звук только после жеста пользователя —
-     стартуем при первом касании экрана */
-  document.addEventListener('pointerdown', function () {
+     стартуем при первом касании экрана; до жеста показываем плашку-подсказку */
+  var soundHint = document.getElementById('soundHint');
+  function unlockAudio() {
     if (state.music && !music.on) musicStart();
     audio();
     crackleStart();
-  }, { once: true });
+    soundHint.hidden = true;
+  }
+  document.addEventListener('pointerdown', unlockAudio, { once: true });
+  soundHint.hidden = !state.music;   // музыка выключена — подсказывать нечего
   /* Автопауза при сворачивании вкладки */
   document.addEventListener('visibilitychange', function () {
     if (document.hidden && !state.locked && state.moves > 0 && !state.paused) pauseGame();

@@ -256,6 +256,7 @@
   .card .big { font-size: 20px; margin: 10px 0; }
   .card .record { color: #9a5b12; font-size: 15px; margin-bottom: 10px; min-height: 20px; }
   .card .row { display: flex; gap: 10px; justify-content: center; margin-top: 16px; flex-wrap: wrap; }
+  .share-panel { display: flex; gap: 8px; justify-content: center; margin-top: 12px; flex-wrap: wrap; }
   table.wins { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 8px; }
   table.wins th, table.wins td { padding: 5px 6px; border-bottom: 1px solid rgba(92,58,28,0.25); }
   table.wins th { opacity: 0.6; font-weight: normal; letter-spacing: 0.06em; font-size: 11.5px; }
@@ -364,6 +365,12 @@
       <button class="btn" id="againBtn">Играть снова</button>
       <button class="btn small" id="shareBtn">⤴ Поделиться</button>
       <button class="btn" id="nextBtn">Следующий уровень</button>
+    </div>
+    <div class="share-panel" id="sharePanel" hidden>
+      <button class="btn small" data-share="tg">✈ Telegram</button>
+      <button class="btn small" data-share="wa">🟢 WhatsApp</button>
+      <button class="btn small" data-share="vk">ВКонтакте</button>
+      <button class="btn small" data-share="copy">📋 Скопировать</button>
     </div>
   </div>
 </div>
@@ -948,6 +955,7 @@
       renderBest();
     }
     updateDailyBtn();
+    if (state.moves > 0) startTimer();   // партия шла — таймер продолжается
     return true;
   }
 
@@ -997,7 +1005,9 @@
         ? (prevRec ? '✦ Лучше вчерашнего: ' + fmtTime(prevRec.time) + ' ✦' : '✦ Первое прохождение сегодня! ✦')
         : 'Сегодня лучше: ' + fmtTime(prevRec.time);
       els.best.textContent = fmtTime(isRecord ? state.elapsed : prevRec.time);
-      setTimeout(function () { els.win.classList.add('show'); }, 450);
+      var sp = document.getElementById('sharePanel');
+    if (sp) sp.hidden = true;
+    setTimeout(function () { els.win.classList.add('show'); }, 450);
       return;
     }
     var prev = getBest(n);
@@ -1019,6 +1029,8 @@
       fmtTime(state.elapsed) + ' · ' + state.moves + ' ходов';
     els.winRecord.textContent = isRecord ? '✦ Новый рекорд! ✦' : 'Рекорд: ' + fmtTime(prev);
     renderBest();
+    var sp = document.getElementById('sharePanel');
+    if (sp) sp.hidden = true;
     setTimeout(function () { els.win.classList.add('show'); }, 450);
   }
 
@@ -1047,20 +1059,38 @@
     lines.push('https://jugaro.github.io/lights-out-stones/');
     return lines.join('\n');
   }
-  function shareResult() {
+  function toggleSharePanel() {
+    var p = document.getElementById('sharePanel');
+    if (p) p.hidden = !p.hidden;
+  }
+  function copyShareText(text, btn) {
+    var done = function () {
+      if (!btn) return;
+      var t = btn.textContent;
+      btn.textContent = '✓ Скопировано';
+      setTimeout(function () { btn.textContent = t; }, 1600);
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { legacyCopy(text); done(); });
+    } else { legacyCopy(text); done(); }
+  }
+  function legacyCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed'; ta.style.opacity = '0';
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand('copy'); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+  function doShare(kind, btn) {
     var text = buildShareText();
     if (!text) return;
-    if (navigator.share) {
-      navigator.share({ title: 'Lights Out Stones', text: text }).catch(function () {});
-    } else if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(function () {
-        var b = document.getElementById('shareBtn');
-        if (!b) return;
-        var t = b.textContent;
-        b.textContent = '✓ Скопировано';
-        setTimeout(function () { b.textContent = t; }, 1600);
-      });
-    }
+    var url = 'https://jugaro.github.io/lights-out-stones/';
+    var eT = encodeURIComponent(text), eU = encodeURIComponent(url);
+    if (kind === 'tg') window.open('https://t.me/share/url?url=' + eU + '&text=' + eT, '_blank');
+    else if (kind === 'wa') window.open('https://wa.me/?text=' + eT + '%20' + eU, '_blank');
+    else if (kind === 'vk') window.open('https://vk.com/share.php?url=' + eU + '&title=' + eT, '_blank');
+    else if (kind === 'copy') copyShareText(text, btn);
   }
 
   /* ---------- Статистика ---------- */
@@ -1162,7 +1192,10 @@
   els.undo.addEventListener('click', onUndo);
   document.getElementById('newBtn').addEventListener('click', newGame);
   document.getElementById('againBtn').addEventListener('click', newGame);
-  document.getElementById('shareBtn').addEventListener('click', shareResult);
+  document.getElementById('shareBtn').addEventListener('click', toggleSharePanel);
+  document.querySelectorAll('#sharePanel button').forEach(function (b) {
+    b.addEventListener('click', function () { doShare(b.dataset.share, b); });
+  });
   document.getElementById('nextBtn').addEventListener('click', function () {
     var i = LEVELS.indexOf(state.n);
     state.n = LEVELS[(i + 1) % LEVELS.length];

@@ -435,6 +435,13 @@
       </div>
     </div>
     <div class="menu-row">
+      <div class="menu-label">Подсветка хода</div>
+      <div class="seg" id="hintSeg">
+        <button data-hint="on" class="active">Вкл</button>
+        <button data-hint="off">Выкл</button>
+      </div>
+    </div>
+    <div class="menu-row">
       <div class="menu-label">Громкость музыки</div>
       <input type="range" id="volumeRange" class="vol" min="0" max="100" step="1" aria-label="Громкость музыки">
     </div>
@@ -481,6 +488,7 @@
     target: localStorage.getItem('los_target') === 'black' ? 'black' : 'white',
     sound: localStorage.getItem('los_sound') !== 'off',
     music: localStorage.getItem('los_music') === 'on',
+    hint: localStorage.getItem('los_hint') !== 'off',
     volume: Math.min(1, Math.max(0, Number(localStorage.getItem('los_volume')) || 0.8)),
     unlocked: Math.max(3, Number(localStorage.getItem('los_unlocked')) || 3),
     board: [],
@@ -782,7 +790,8 @@
   }
   els.board.addEventListener('mouseover', function (e) {
     var cell = e.target.closest('.cell');
-    if (!cell || state.locked || state.paused) return;
+    clearHint();
+    if (!cell || !state.hint || state.locked || state.paused) return;
     var cells = els.board.children;
     var idx = Array.prototype.indexOf.call(cells, cell);
     if (idx < 0) return;
@@ -1030,6 +1039,9 @@
     document.querySelectorAll('#musicSeg button').forEach(function (b) {
       b.classList.toggle('active', (b.dataset.music === 'on') === state.music);
     });
+    document.querySelectorAll('#hintSeg button').forEach(function (b) {
+      b.classList.toggle('active', (b.dataset.hint === 'on') === state.hint);
+    });
     els.modeNote.textContent = MODE_NOTES[state.mode];
   }
 
@@ -1129,6 +1141,13 @@
     localStorage.setItem('los_music', state.music ? 'on' : 'off');
     syncMenu();
     if (state.music) musicStart(); else musicStop();
+  });
+  document.getElementById('hintSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    state.hint = btn.dataset.hint === 'on';
+    localStorage.setItem('los_hint', state.hint ? 'on' : 'off');
+    if (!state.hint) clearHint();
+    syncMenu();
   });
   /* Громкость музыки: ползунок 0–100, меняет общий гейн музыкальной шины */
   var volumeRange = document.getElementById('volumeRange');

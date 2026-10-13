@@ -470,8 +470,10 @@
     <div class="menu-row">
       <div class="menu-label">Музыка</div>
       <div class="seg" id="musicSeg">
-        <button data-music="on">Вкл</button>
         <button data-music="off" class="active">Выкл</button>
+        <button data-music="zen">Дзен</button>
+        <button data-music="fire">Камин</button>
+        <button data-music="rain">Дождь</button>
       </div>
     </div>
     <div class="menu-row">
@@ -532,7 +534,12 @@
     diff: DIFFS.indexOf(localStorage.getItem('los_diff')) >= 0 ? localStorage.getItem('los_diff') : 'medium',
     target: localStorage.getItem('los_target') === 'black' ? 'black' : 'white',
     sound: localStorage.getItem('los_sound') !== 'off',
-    music: localStorage.getItem('los_music') === 'on',
+    music: (function () {
+      // миграция старого формата: 'on' → 'zen', иначе — выбранная дорожка или тишина
+      var m = localStorage.getItem('los_music');
+      if (m === 'on') return 'zen';
+      return ['zen', 'fire', 'rain'].indexOf(m) >= 0 ? m : 'off';
+    })(),
     hint: localStorage.getItem('los_hint') !== 'off',
     vibro: localStorage.getItem('los_vibro') !== 'off',
     volume: Math.min(1, Math.max(0, Number(localStorage.getItem('los_volume')) || 0.8)),
@@ -677,11 +684,13 @@
     });
   }
 
-  /* ---------- Музыка: готовая композиция, бесшовный цикл через Web Audio ----------
-   * Файл music-theme.mp3 уже содержит кроссфейд «хвост → голова» (6 с),
-   * поэтому буферный loop стыкуется без щелчка и паузы.
+  /* ---------- Музыка: готовые эмбиент-фонограммы, бесшовный цикл ----------
+   * Дзен (music-theme.mp3) содержит запечённый кроссфейд «хвост → голова» (6 с).
+   * Камин и Дождь — сгенерированные лупы без кроссфейда, поэтому перед циклом
+   * смешиваем хвост с головой (0,4 с), чтобы стык не щёлкал.
    */
-  var music = { on: false, bus: null, buf: null, src: null };
+  var MUSIC_FILES = { zen: 'music-theme.mp3', fire: 'music-fire.mp3', rain: 'music-rain.mp3' };
+  var music = { on: false, bus: null, bufs: {}, src: null, track: null };
 
   function musicBusEnsure() {
     if (!music.bus) {
@@ -690,31 +699,52 @@
       music.bus.connect(actx.destination);
     }
   }
-  function musicPlayBuffer() {
+  function loopableBuffer(buf) {
+    var fade = Math.min(0.4, buf.duration / 10);
+    var sr = buf.sampleRate, ch = buf.numberOfChannels;
+    var n = Math.floor(fade * sr);
+    var out = actx.createBuffer(ch, buf.length, sr);
+    for (var c = 0; c < ch; c++) {
+      var src = buf.getChannelData(c), dst = out.getChannelData(c);
+      dst.set(src);
+      for (var i = 0; i < n; i++) {
+        var k = i / n;   // 0 → 1: хвост въезжает в голову
+        dst[i] = dst[i] * k + src[src.length - n + i] * (1 - k);
+      }
+    }
+    return out;
+  }
+  function musicPlayBuffer(buf) {
     if (music.src) { try { music.src.stop(); } catch (e) {} }
     music.src = actx.createBufferSource();
-    music.src.buffer = music.buf;
+    music.src.buffer = buf;
     music.src.loop = true;
     music.src.connect(music.bus);
     music.src.start();
   }
   function musicStart() {
+    var track = state.music;
+    if (track === 'off') return;
     var ctx = audio(); if (!ctx) return;
     musicBusEnsure();
     music.on = true;
+    music.track = track;
     music.bus.gain.setTargetAtTime(state.volume, ctx.currentTime, 0.8);
-    if (music.buf) { musicPlayBuffer(); return; }
-    fetch('music-theme.mp3')
+    if (music.bufs[track]) { musicPlayBuffer(music.bufs[track]); return; }
+    fetch(MUSIC_FILES[track])
       .then(function (r) { return r.arrayBuffer(); })
       .then(function (ab) { return actx.decodeAudioData(ab); })
       .then(function (buf) {
-        music.buf = buf;
-        if (music.on) musicPlayBuffer();   // пользователь мог выключить, пока грузилось
+        if (track !== 'zen') buf = loopableBuffer(buf);
+        music.bufs[track] = buf;
+        // играем, только если за время загрузки дорожку не сменили/выключили
+        if (music.on && music.track === track) musicPlayBuffer(buf);
       })
       .catch(function () {});
   }
   function musicStop() {
     music.on = false;
+    music.track = null;
     if (music.src) { try { music.src.stop(); } catch (e) {} music.src = null; }
     if (actx && music.bus) music.bus.gain.setTargetAtTime(0, actx.currentTime, 0.5);
   }
@@ -1221,7 +1251,7 @@
       b.classList.toggle('active', (b.dataset.sound === 'on') === state.sound);
     });
     document.querySelectorAll('#musicSeg button').forEach(function (b) {
-      b.classList.toggle('active', (b.dataset.music === 'on') === state.music);
+      b.classList.toggle('active', b.dataset.music === state.music);
     });
     document.querySelectorAll('#hintSeg button').forEach(function (b) {
       b.classList.toggle('active', (b.dataset.hint === 'on') === state.hint);
@@ -1336,12 +1366,12 @@
   });
   document.getElementById('musicSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
-    var want = btn.dataset.music === 'on';
-    if (want === state.music) return;
-    state.music = want;
-    localStorage.setItem('los_music', state.music ? 'on' : 'off');
+    var track = btn.dataset.music;
+    if (track === state.music) return;
+    state.music = track;
+    localStorage.setItem('los_music', track);
     syncMenu();
-    if (state.music) musicStart(); else musicStop();
+    if (track === 'off') musicStop(); else musicStart();
   });
   document.getElementById('hintSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
@@ -1374,13 +1404,13 @@
      стартуем при первом касании экрана; до жеста показываем плашку-подсказку */
   var soundHint = document.getElementById('soundHint');
   function unlockAudio() {
-    if (state.music && !music.on) musicStart();
+    if (state.music !== 'off' && !music.on) musicStart();
     audio();
     crackleStart();
     soundHint.hidden = true;
   }
   document.addEventListener('pointerdown', unlockAudio, { once: true });
-  soundHint.hidden = !state.music;   // музыка выключена — подсказывать нечего
+  soundHint.hidden = state.music === 'off';   // музыка выключена — подсказывать нечего
   /* Автопауза при сворачивании вкладки */
   document.addEventListener('visibilitychange', function () {
     if (document.hidden && !state.locked && state.moves > 0 && !state.paused) pauseGame();

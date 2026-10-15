@@ -160,6 +160,23 @@
   }
   .cell.black .face.white { opacity: 0; }
   .cell.black .face.black { opacity: 1; }
+  /* Сердцевина — препятствие: серый квадратный камень, не переворачивается */
+  .cell.block { cursor: not-allowed; }
+  .cell.block .stone { inset: 12%; border-radius: 22%; transform: none !important; }
+  .cell.block .face { border-radius: 22%; opacity: 0; }
+  .cell.block .face.white {
+    opacity: 1;
+    background: radial-gradient(circle at 34% 28%, #b9b2a4 0%, #948d7f 45%, #6e685c 100%);
+    box-shadow: 0 2px 4px rgba(60, 35, 10, 0.5), inset 0 -2px 3px rgba(60, 55, 45, 0.6);
+  }
+  .cell.block .face.black { opacity: 0 !important; }
+  .cell.block::after {
+    content: '';
+    position: absolute; inset: 18%;
+    border: 2px dashed rgba(74, 54, 38, 0.4);
+    border-radius: 18%;
+    pointer-events: none;
+  }
   .cell.pressed .stone { animation: flipPulse 0.28s ease; }
   /* Подсветка линии хода при наведении */
   .cell.hint .stone {
@@ -413,6 +430,18 @@
 </div>
 <div class="toast" id="toast"></div>
 
+<!-- Лимит ходов вызова дня исчерпан -->
+<div class="overlay" id="limitOverlay">
+  <div class="card">
+    <h2>ХОДЫ ЗАКОНЧИЛИСЬ</h2>
+    <div class="zen" id="limitInfo"></div>
+    <div class="row">
+      <button class="btn" id="limitRetryBtn">Ещё попытка</button>
+      <button class="btn small" id="limitCloseBtn">Закрыть</button>
+    </div>
+  </div>
+</div>
+
 <!-- Статистика -->
 <div class="overlay" id="statsOverlay">
   <div class="card">
@@ -479,6 +508,14 @@
       <div class="seg" id="modeSeg">
         <button data-mode="rays" class="active">Лучи</button>
         <button data-mode="cross">Крест</button>
+        <button data-mode="diagonals">Диагонали</button>
+      </div>
+    </div>
+    <div class="menu-row">
+      <div class="menu-label">Препятствия</div>
+      <div class="seg" id="rocksSeg">
+        <button data-rocks="off" class="active">Выкл</button>
+        <button data-rocks="on">Вкл</button>
       </div>
     </div>
     <div class="menu-row">
@@ -555,6 +592,11 @@
       easy:   { 3: [1, 2], 5: [2, 3],  7: [3, 4],   9: [4, 5] },
       medium: { 3: [2, 3], 5: [3, 5],  7: [4, 6],   9: [5, 7] },
       hard:   { 3: [4, 5], 5: [6, 8],  7: [7, 10],  9: [9, 12] }
+    },
+    diagonals: {
+      easy:   { 3: [1, 2], 5: [2, 4],  7: [3, 5],   9: [4, 6] },
+      medium: { 3: [2, 3], 5: [4, 6],  7: [5, 8],   9: [7, 10] },
+      hard:   { 3: [3, 4], 5: [6, 9],  7: [8, 12],  9: [10, 14] }
     }
   };
   var LEVELS = [3, 5, 7];
@@ -562,7 +604,8 @@
   var DIFFS = ['easy', 'medium', 'hard'];
   var MODE_NOTES = {
     rays: 'Лучи: нажатие переворачивает все камни своей строки и своего столбца.',
-    cross: 'Крест: нажатие переворачивает камень и его ближайших соседей по вертикали и горизонтали.'
+    cross: 'Крест: нажатие переворачивает камень и его ближайших соседей по вертикали и горизонтали.',
+    diagonals: 'Диагонали: нажатие переворачивает обе диагонали, проходящие через камень.'
   };
 
   /* ---------- Кампания: три круга с ростом сложности ----------
@@ -634,10 +677,13 @@
     })(),
     hint: localStorage.getItem('los_hint') !== 'off',
     vibro: localStorage.getItem('los_vibro') !== 'off',
+    rocks: localStorage.getItem('los_rocks') === 'on',
     volume: Math.min(1, Math.max(0, Number(localStorage.getItem('los_volume')) || 0.8)),
     unlocked: campaignPos() === null ? 9 : campaignUnlocked(),
     board: [],
     startBoard: null,
+    blocks: [],        // индексы «сердцевин» — препятствий, не переворачиваются
+    moveLimit: 0,      // лимит ходов (вызыв дня), 0 — без лимита
     moves: 0,
     history: [],
     timerId: null,
@@ -678,7 +724,9 @@
     ruleHint: document.getElementById('ruleHint'),
     winZen: document.getElementById('winZen'),
     winBonus: document.getElementById('winBonus'),
-    winSuggest: document.getElementById('winSuggest')
+    winSuggest: document.getElementById('winSuggest'),
+    limit: document.getElementById('limitOverlay'),
+    limitInfo: document.getElementById('limitInfo')
   };
 
   /* ---------- Хранилище рекордов ---------- */
@@ -991,8 +1039,9 @@
         (function (r, c) {
           var idx = r * n + c;
           var cell = document.createElement('button');
-          cell.className = 'cell' + (state.board[idx] === L.BLACK ? ' black' : '');
-          cell.setAttribute('aria-label', 'камень ' + (r + 1) + '-' + (c + 1));
+          var isBlock = state.blocks.indexOf(idx) >= 0;
+          cell.className = 'cell' + (state.board[idx] === L.BLACK ? ' black' : '') + (isBlock ? ' block' : '');
+          cell.setAttribute('aria-label', 'камень ' + (r + 1) + '-' + (c + 1) + (isBlock ? ' (сердцевина)' : ''));
           if (idx === pressedIdx) {
             cell.classList.add('pressed');
             setTimeout(function () { cell.classList.remove('pressed'); }, 300);
@@ -1007,7 +1056,7 @@
       }
     }
     clearHint();
-    els.moves.textContent = state.moves;
+    els.moves.textContent = state.moveLimit ? (state.moves + ' / ' + state.moveLimit) : state.moves;
     els.undo.disabled = state.history.length === 0;
   }
 
@@ -1023,8 +1072,9 @@
     var idx = Array.prototype.indexOf.call(cells, cell);
     if (idx < 0) return;
     var n = state.n;
-    // подсвечиваем ровно те камни, которые перевернёт нажатие
+    // подсвечиваем ровно те камни, которые перевернёт нажатие (сердцевины — никогда)
     L.pressMask(n, Math.floor(idx / n), idx % n, state.mode).forEach(function (i2) {
+      if (state.blocks.indexOf(i2) >= 0) return;
       cells[i2].classList.add('hint');
     });
   }
@@ -1068,6 +1118,34 @@
     if (list.length > 100) list.length = 100;
     localStorage.setItem('los_daily_history', JSON.stringify(list));
   }
+  /* ---------- Серия дней: пройденные вызова подряд, огоньки растут ---------- */
+  function dayStr(offset) {
+    var d = new Date();
+    d.setDate(d.getDate() - (offset || 0));
+    return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+  }
+  function getStreak() {
+    try { return JSON.parse(localStorage.getItem('los_streak')) || { last: null, count: 0 }; }
+    catch (e) { return { last: null, count: 0 }; }
+  }
+  function bumpStreak() {
+    var s = getStreak();
+    if (s.last === dayStr()) return s.count;   // сегодня уже засчитано
+    s.count = (s.last === dayStr(1)) ? s.count + 1 : 1;
+    s.last = dayStr();
+    localStorage.setItem('los_streak', JSON.stringify(s));
+    return s.count;
+  }
+  function streakFlames(count) {
+    var flames = '';
+    for (var i = 0, f = Math.min(count, 7); i < f; i++) flames += '🔥';
+    return flames + '×' + count;
+  }
+  function streakText() {
+    var s = getStreak();
+    if (!s.count || s.last !== dayStr()) return '';
+    return streakFlames(s.count);
+  }
   // детерминированный ГПСЧ из даты — доска одинаковая у всех в этот день
   function mulberry32(a) {
     return function () {
@@ -1089,6 +1167,25 @@
   }
 
   /* ---------- Логика партии ---------- */
+  // «Сердцевины» — симметричные препятствия: не переворачиваются никогда.
+  // Количество растёт с размером доски: усложнение именно в том, что часть
+  // линий хода «съедена» и перевороты бьют короче.
+  function makeBlocks(n, rng) {
+    var want = n >= 9 ? 4 : n >= 7 ? 3 : n >= 5 ? 2 : 1;
+    var blocks = [];
+    var guard = 0;
+    while (blocks.length < want && guard++ < 100) {
+      var br = Math.floor(rng() * n), bc = Math.floor(rng() * n);
+      var mirrors = {};
+      [br * n + bc, br * n + (n - 1 - bc), (n - 1 - br) * n + bc, (n - 1 - br) * n + (n - 1 - bc)]
+        .forEach(function (x) { mirrors[x] = 1; });
+      Object.keys(mirrors).forEach(function (x) {
+        x = Number(x);
+        if (blocks.length < want && blocks.indexOf(x) < 0) blocks.push(x);
+      });
+    }
+    return blocks;
+  }
   function newGame() {
     stopTimer();
     var rng = Math.random;
@@ -1102,18 +1199,35 @@
       range = [6, 6];
       rng = mulberry32(dailySeed());
     }
+    // препятствия — своим генератором, чтобы доска оставалась воспроизводимой
+    state.blocks = state.rocks
+      ? makeBlocks(n, state.daily ? mulberry32(dailySeed() ^ 0x9e3779b9) : Math.random)
+      : [];
     // защита от случайно «пустой» генерации (нажатия сократились до нуля):
     // перегенерируем, пока стартовая позиция не станет нерешённой
     var board, num, tries = 0;
+    var rec = [];
     do {
       num = range[0] + Math.floor(rng() * (range[1] - range[0] + 1));
-      board = L.generateBoard(n, num, rng, mode, color);
+      rec = [];
+      board = L.generateBoard(n, num, rng, mode, color, { blocks: state.blocks, presses: rec });
       tries++;
     } while (L.isWin(board, color) && tries < 20);
     state.n = n;
     state.mode = mode;
     state.board = board;
     state.startBoard = board.slice();
+    // лимит ходов — только вызов дня: хватает на решение + два лишних.
+    // Решение — нажатия с НЕЧЁТНОЙ кратностью (двойное нажатие — тождество).
+    if (state.daily) {
+      var parity = {};
+      rec.forEach(function (p) { var k = p[0] * n + p[1]; parity[k] = !parity[k]; });
+      var base = 0;
+      Object.keys(parity).forEach(function (k) { if (parity[k]) base++; });
+      state.moveLimit = base + 2;
+    } else {
+      state.moveLimit = 0;
+    }
     state.moves = 0;
     state.history = [];
     state.elapsed = 0;
@@ -1126,6 +1240,7 @@
     els.winBonus.hidden = true;
     els.winSuggest.hidden = true;
     els.pause.classList.remove('show');
+    els.limit.classList.remove('show');
     els.ruleHint.textContent = color === L.BLACK
       ? 'Переверни все белые камни чёрной стороной вверх'
       : 'Переверни все чёрные камни белой стороной вверх';
@@ -1154,6 +1269,7 @@
         n: state.n, mode: state.mode, diff: state.diff, target: state.target,
         board: state.board, start: state.startBoard, moves: state.moves,
         history: state.history.slice(-30), elapsed: currentElapsed(),
+        blocks: state.blocks, moveLimit: state.moveLimit,
         daily: state.daily, dailyDate: state.daily ? dailyKey() : null
       }));
     } catch (e) {}
@@ -1172,6 +1288,8 @@
     state.board = s.board; state.startBoard = s.start || s.board.slice();
     state.moves = s.moves || 0; state.history = s.history || [];
     state.elapsed = s.elapsed || 0; state.daily = !!s.daily;
+    state.blocks = s.blocks || [];
+    state.moveLimit = s.moveLimit || 0;
     state.locked = false; state.paused = false;
     pauseBtn.textContent = '⏸ Пауза';
     els.time.textContent = fmtTime(state.elapsed);
@@ -1195,13 +1313,37 @@
     if (state.locked || state.paused) return;
     if (state.moves === 0 && !state.startedAt) startTimer();
     state.history.push(state.board.slice());
-    state.board = L.applyPress(state.board, state.n, r, c, state.mode);
+    state.board = L.applyPress(state.board, state.n, r, c, state.mode, state.blocks);
     state.moves++;
     sndFlip();
     vibro(30);
     render(r * state.n + c);
     saveSession();
-    if (L.isWin(state.board, targetColor())) onWin();
+    if (L.isWin(state.board, targetColor())) { onWin(); return; }
+    // вызов дня: лимит ходов исчерпан — партия проиграна
+    if (state.moveLimit && state.moves >= state.moveLimit) limitFail();
+  }
+  function limitFail() {
+    state.locked = true;
+    stopTimer();
+    sndClick();
+    vibro([120, 60, 120]);
+    clearSession();
+    els.limitInfo.textContent = 'Лимит ' + state.moveLimit + ' ходов исчерпан. Доска дня ждёт новой попытки.';
+    els.limit.classList.add('show');
+  }
+  function limitRetry() {
+    els.limit.classList.remove('show');
+    state.board = state.startBoard.slice();
+    state.moves = 0;
+    state.history = [];
+    state.elapsed = 0;
+    state.locked = false;
+    state.startedAt = null;
+    els.time.textContent = '0:00';
+    updateIncense();
+    render();
+    saveSession();
   }
 
   function onUndo() {
@@ -1239,6 +1381,10 @@
         ? (prevRec ? '✦ Лучше вчерашнего: ' + fmtTime(prevRec.time) + ' ✦' : '✦ Первое прохождение сегодня! ✦')
         : 'Сегодня лучше: ' + fmtTime(prevRec.time);
       els.best.textContent = fmtTime(isRecord ? state.elapsed : prevRec.time);
+      // серия дней: огоньки растут с каждым пройденным вызовом подряд
+      var st = bumpStreak();
+      els.winBonus.textContent = st > 1 ? ('Серия дней: ' + streakFlames(st)) : '';
+      els.winBonus.hidden = st <= 1;
       setTimeout(function () { els.win.classList.add('show'); }, 450);
       return;
     }
@@ -1343,7 +1489,7 @@
 
   function winsTable(rows) {
     var body = rows.map(function (w) {
-      var mode = w.mode === 'cross' ? 'крест' : (w.mode === 'rays' ? 'лучи' : '—');
+      var mode = w.mode === 'cross' ? 'крест' : (w.mode === 'rays' ? 'лучи' : (w.mode === 'diagonals' ? 'диагонали' : '—'));
       return '<tr><td>' + w.date + '</td><td>' + w.level + '×' + w.level + '</td><td>' +
         mode + '</td><td>' + fmtTime(w.time) + '</td><td>' + w.moves + '</td></tr>';
     }).join('');
@@ -1352,16 +1498,20 @@
   }
 
   function renderStats() {
-    // пройденные вызовы дня — отдельным блоком сверху
+    // пройденные вызовы дня — отдельным блоком сверху, с серией огоньков
     var daily = getDailyHistory();
+    var streak = streakText();
     if (daily.length) {
       var rows = daily.map(function (r) {
         return '<tr><td>' + r.date + '</td><td>' + fmtTime(r.time) + '</td><td>' + r.moves + '</td></tr>';
       }).join('');
-      els.dailyBody.innerHTML = '<div class="diff-title">Вызов дня</div>' +
+      els.dailyBody.innerHTML = '<div class="diff-title">Вызов дня' +
+        (streak ? ' · серия ' + streak : '') + '</div>' +
         '<table class="wins"><tr><th>ДАТА</th><th>ВРЕМЯ</th><th>ХОДЫ</th></tr>' + rows + '</table>';
     } else {
-      els.dailyBody.innerHTML = '';
+      els.dailyBody.innerHTML = streak
+        ? '<div class="diff-title">Вызов дня · серия ' + streak + '</div>'
+        : '';
     }
     var wins = getWins();
     if (wins.length === 0) {
@@ -1423,6 +1573,9 @@
     });
     document.querySelectorAll('#vibroSeg button').forEach(function (b) {
       b.classList.toggle('active', (b.dataset.vibro === 'on') === state.vibro);
+    });
+    document.querySelectorAll('#rocksSeg button').forEach(function (b) {
+      b.classList.toggle('active', (b.dataset.rocks === 'on') === state.rocks);
     });
     // «Продолжить» в меню — только пока игра на паузе и не завершена
     document.getElementById('menuResumeBtn').hidden = !(state.paused && !state.locked);
@@ -1562,6 +1715,15 @@
     syncMenu();
     if (state.vibro) vibro(40);   // сразу показать, что включилось
   });
+  /* Препятствия: сердцевины на доске, не переворачиваются */
+  document.getElementById('rocksSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    if ((btn.dataset.rocks === 'on') === state.rocks) return;
+    state.rocks = btn.dataset.rocks === 'on';
+    localStorage.setItem('los_rocks', state.rocks ? 'on' : 'off');
+    syncMenu();
+    newGame();
+  });
   /* Громкость музыки: ползунок 0–100, меняет общий гейн музыкальной шины */
   var volumeRange = document.getElementById('volumeRange');
   function paintVolume() {
@@ -1601,8 +1763,13 @@
     localStorage.removeItem('los_wins');
     renderStats(); renderBest();
   });
-  [els.win, els.stats, els.pause, els.menu, els.settings, els.levels].forEach(function (ov) {
+  [els.win, els.stats, els.pause, els.menu, els.settings, els.levels, els.limit].forEach(function (ov) {
     ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('show'); });
+  });
+  /* Лимит ходов вызова дня */
+  document.getElementById('limitRetryBtn').addEventListener('click', limitRetry);
+  document.getElementById('limitCloseBtn').addEventListener('click', function () {
+    els.limit.classList.remove('show');   // повторная попытка — через «Вызов дня» в меню
   });
 
   /* ---------- Service worker (только по http/https) ---------- */

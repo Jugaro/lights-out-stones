@@ -201,3 +201,75 @@ test('generateBoard с целью black: повтор исходных нажа�
   const solved = L.applyPress(scrambled, 4, 1, 2, 'rays');
   assert.ok(L.isWin(solved, L.BLACK));
 });
+
+/** Нажатия с нечётной кратностью: только их повтор решает доску (двойное нажатие — тождество). */
+function oddPresses(presses, n) {
+  const parity = new Map();
+  for (const [r, c] of presses) {
+    const k = r * n + c;
+    parity.set(k, !parity.get(k));
+  }
+  const out = [];
+  for (const [k, odd] of parity) if (odd) out.push([Math.floor(k / n), k % n]);
+  return out;
+}
+
+/* ---------- Режим «Диагонали» ---------- */
+
+test('pressMask diagonals: угол переворачивает ровно одну диагональ (n камней)', () => {
+  for (const n of [3, 5, 7]) {
+    const mask = L.pressMask(n, 0, 0, 'diagonals');
+    assert.equal(mask.length, n);
+    for (let k = 0; k < n; k++) assert.ok(mask.includes(k * n + k), `нет клетки ${k},${k}`);
+  }
+});
+
+test('pressMask diagonals: центр 5×5 переворачивает 9 камней (обе диагонали)', () => {
+  const mask = L.pressMask(5, 2, 2, 'diagonals');
+  assert.equal(mask.length, 9);
+  assert.ok(mask.includes(2 * 5 + 2));
+  assert.ok(mask.includes(0));
+  assert.ok(mask.includes(24));
+  assert.ok(mask.includes(4));
+  assert.ok(mask.includes(20));
+  assert.ok(!mask.includes(7));   // сосед по вертикали — не диагональ
+});
+
+test('applyPress diagonals: двойное нажатие — тождество', () => {
+  const b0 = L.generateBoard(5, 5, L.makeRng(7), 'diagonals');
+  const b1 = L.applyPress(b0, 5, 1, 3, 'diagonals');
+  const b2 = L.applyPress(b1, 5, 1, 3, 'diagonals');
+  assert.deepEqual(b2, b0);
+});
+
+test('generateBoard diagonals: повтор записанных нажатий решает доску', () => {
+  const presses = [];
+  const board = L.generateBoard(7, 6, L.makeRng(42), 'diagonals', L.WHITE, { presses });
+  assert.ok(!L.isWin(board));
+  let b = board;
+  for (const [r, c] of oddPresses(presses, 7)) b = L.applyPress(b, 7, r, c, 'diagonals');
+  assert.ok(L.isWin(b));
+});
+
+/* ---------- Препятствия (сердцевины) ---------- */
+
+test('applyPress с блоками: сердцевины не переворачиваются', () => {
+  const n = 5;
+  const blocks = [0, 12, 24];
+  const b0 = new Array(n * n).fill(L.BLACK);   // все чёрные
+  const b1 = L.applyPress(b0, n, 2, 2, 'rays', blocks);
+  for (const x of blocks) assert.equal(b1[x], L.BLACK, `блок ${x} перевернулся`);
+  assert.equal(b1[2 * n + 1], L.WHITE);        // сосед перевернулся
+});
+
+test('generateBoard с блоками: позиция решаема повтором записанных нажатий', () => {
+  const n = 5;
+  const blocks = [6, 7, 17, 18];
+  const presses = [];
+  const board = L.generateBoard(n, 6, L.makeRng(11), 'cross', L.WHITE, { blocks, presses });
+  assert.ok(!L.isWin(board));
+  let b = board;
+  for (const [r, c] of oddPresses(presses, n)) b = L.applyPress(b, n, r, c, 'cross', blocks);
+  assert.ok(L.isWin(b));
+  for (const x of blocks) assert.equal(b[x], L.WHITE, `блок ${x} сменил цвет`);
+});

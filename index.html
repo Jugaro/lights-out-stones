@@ -270,6 +270,8 @@
     z-index: 10; padding: 20px;
   }
   .overlay.show { display: flex; }
+  /* Пауза — чёрное затемнение вместо тёплого */
+  #pauseOverlay { background: rgba(8, 8, 10, 0.78); }
   .card {
     background: linear-gradient(160deg, #fbf3df, #f0dfb8);
     border: 1px solid var(--line); border-radius: 14px;
@@ -463,7 +465,7 @@
     <div class="zen" id="limitInfo"></div>
     <div class="row">
       <button class="btn" id="limitRetryBtn">Ещё попытка</button>
-      <button class="btn small" id="limitCloseBtn">Закрыть</button>
+      <button class="btn small" id="limitCloseBtn">Меню</button>
     </div>
   </div>
 </div>
@@ -1890,7 +1892,9 @@
   /* Лимит ходов вызова дня */
   document.getElementById('limitRetryBtn').addEventListener('click', limitRetry);
   document.getElementById('limitCloseBtn').addEventListener('click', function () {
-    els.limit.classList.remove('show');   // повторная попытка — через «Вызов дня» в меню
+    els.limit.classList.remove('show');
+    syncMenu();
+    els.menu.classList.add('show');   // дальше — через меню: «Вызов дня» или «Новая игра»
   });
 
   /* ---------- Service worker (только по http/https) ---------- */

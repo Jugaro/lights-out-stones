@@ -1702,12 +1702,20 @@
     els.menu.classList.add('show');
   });
   /* Меню */
+  var menuPausedByOpen = false;   // меню само поставило игру на паузу
   document.getElementById('menuBtn').addEventListener('click', function () {
+    menuPausedByOpen = false;
+    if (!state.paused && !state.locked) {
+      pauseGame();
+      menuPausedByOpen = true;   // «Закрыть» из меню продолжит партию автоматически
+    }
     syncMenu();
     els.menu.classList.add('show');
   });
   document.getElementById('closeMenuBtn').addEventListener('click', function () {
     els.menu.classList.remove('show');
+    if (menuPausedByOpen && state.paused && !state.locked) resumeGame();
+    menuPausedByOpen = false;
   });
   document.getElementById('menuSettingsBtn').addEventListener('click', function () {
     syncMenu();
@@ -1718,6 +1726,7 @@
   });
   document.getElementById('menuResumeBtn').addEventListener('click', function () {
     els.menu.classList.remove('show');
+    menuPausedByOpen = false;
     resumeGame();
   });
   document.getElementById('menuNewBtn').addEventListener('click', function () {

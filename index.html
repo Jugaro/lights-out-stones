@@ -339,6 +339,31 @@
     .board-frame { padding: 8px; }
     .incense-wrap { display: none; }
   }
+  /* ---------- Окно «Уровни»: кампания 4×3 ---------- */
+  .levels-grid { display: flex; flex-direction: column; gap: 8px; margin: 14px 0 10px; }
+  .lvl-row { display: flex; align-items: center; gap: 8px; }
+  .lvl-name { width: 48px; text-align: left; font-weight: 700; letter-spacing: 0.04em; }
+  .lvl-cell {
+    flex: 1; padding: 9px 2px; border: 1px solid var(--line); border-radius: 9px;
+    background: rgba(255, 250, 238, 0.55); color: var(--ink);
+    font: inherit; font-size: 14px; cursor: pointer; transition: background 0.15s;
+  }
+  .lvl-cell.done { background: rgba(120, 150, 90, 0.28); }
+  .lvl-cell.current { outline: 2px solid var(--line); outline-offset: -2px; }
+  .lvl-cell.locked { opacity: 0.42; cursor: default; background: rgba(92, 58, 28, 0.08); }
+  .lvl-cell:not(.locked):active { background: rgba(255, 250, 238, 0.9); }
+  /* Тост-поздравление */
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(8px);
+    background: var(--ink); color: #fff8ea; padding: 10px 18px; border-radius: 12px;
+    font-size: 15px; letter-spacing: 0.03em; opacity: 0; pointer-events: none;
+    transition: opacity 0.25s, transform 0.25s; z-index: 60;
+    box-shadow: 0 4px 14px rgba(40, 24, 8, 0.35); max-width: 90vw; text-align: center;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  /* Бонусные строки в окне победы */
+  .win-bonus { margin-top: 8px; color: #7a5a1e; font-weight: 700; letter-spacing: 0.03em; }
+  .win-suggest { margin-top: 6px; font-style: italic; opacity: 0.85; }
 </style>
 </head>
 <body>
@@ -346,11 +371,6 @@
 <h1>Lights Out Stones</h1>
 
 <div class="controls">
-  <div class="seg" id="levelSeg">
-    <button data-n="3">3×3</button>
-    <button data-n="5" class="active">5×5</button>
-    <button data-n="7">7×7</button>
-  </div>
   <button class="btn small" id="pauseBtn">⏸ Пауза</button>
   <button class="btn small" id="menuBtn">☰ Меню</button>
 </div>
@@ -382,6 +402,8 @@
     <div class="zen" id="winZen">все камни обратились свету</div>
     <div class="big" id="winDetails"></div>
     <div class="record" id="winRecord"></div>
+    <div class="win-bonus" id="winBonus" hidden></div>
+    <div class="win-suggest" id="winSuggest" hidden></div>
     <div class="row">
       <button class="btn" id="againBtn">Играть снова</button>
       <button class="btn small" id="shareBtn">⤴ Поделиться</button>
@@ -389,6 +411,7 @@
     </div>
   </div>
 </div>
+<div class="toast" id="toast"></div>
 
 <!-- Статистика -->
 <div class="overlay" id="statsOverlay">
@@ -433,6 +456,19 @@
   </div>
 </div>
 
+<!-- Уровни: карта кампании и выбор доски -->
+<div class="overlay" id="levelsOverlay">
+  <div class="card">
+    <h2>УРОВНИ</h2>
+    <div class="zen" id="levelsZen"></div>
+    <div class="levels-grid" id="levelsGrid"></div>
+    <div class="menu-note" id="levelsNote"></div>
+    <div class="row">
+      <button class="btn" id="closeLevelsBtn">Закрыть</button>
+    </div>
+  </div>
+</div>
+
 <!-- Настройки -->
 <div class="overlay" id="settingsOverlay">
   <div class="card">
@@ -451,15 +487,6 @@
         <button data-diff="easy">Легко</button>
         <button data-diff="medium" class="active">Средне</button>
         <button data-diff="hard">Тяжело</button>
-      </div>
-    </div>
-    <div class="menu-row" id="nSetRow" style="display:none">
-      <div class="menu-label">Уровень</div>
-      <div class="seg" id="nSetSeg">
-        <button data-n="3">3×3</button>
-        <button data-n="5">5×5</button>
-        <button data-n="7">7×7</button>
-        <button data-n="9">9×9</button>
       </div>
     </div>
     <div class="menu-row">
@@ -548,11 +575,20 @@
   var campaignDone = {};
   (function loadCampaign() {
     var raw = localStorage.getItem('los_campaign_done');
-    if (raw) { try { campaignDone = JSON.parse(raw) || {}; } catch (e) {} return; }
-    // миграция: ранее открытые размеры и существующие рекорды считаем пройденными
+    if (raw) { try { campaignDone = JSON.parse(raw) || {}; } catch (e) {} }
+    // миграция: ранее открытые размеры и существующие рекорды считаем пройденными.
+    // Проверка идемпотентна — выполняется при каждом запуске, чтобы ветераны,
+    // у кого los_campaign_done уже записан частично, тоже получили засчитанную кампанию.
     var oldUnlocked = Number(localStorage.getItem('los_unlocked')) || 3;
-    if (oldUnlocked >= 5) campaignDone['3_easy'] = 1;
-    if (oldUnlocked >= 7) campaignDone['5_easy'] = 1;
+    var changed = false;
+    if (oldUnlocked >= 5 && !campaignDone['3_easy']) { campaignDone['3_easy'] = 1; changed = true; }
+    if (oldUnlocked >= 7) {
+      // ветераны со старым полным доступом прошли прежнюю прогрессию целиком —
+      // засчитываем кампанию полностью, бонусный 9×9 им положен
+      CAMPAIGN.forEach(function (c) {
+        if (!campaignDone[c.n + '_' + c.d]) { campaignDone[c.n + '_' + c.d] = 1; changed = true; }
+      });
+    }
     CAMPAIGN.forEach(function (c) {
       if (campaignDone[c.n + '_' + c.d]) return;
       outer:
@@ -560,11 +596,12 @@
         var m = ['rays', 'cross'][mi], t = ['white', 'black'][ti];
         if (localStorage.getItem('los_best_' + c.n + '_' + m + '_' + c.d + '_' + t) !== null) {
           campaignDone[c.n + '_' + c.d] = 1;
+          changed = true;
           break outer;
         }
       }
     });
-    localStorage.setItem('los_campaign_done', JSON.stringify(campaignDone));
+    if (changed || !raw) localStorage.setItem('los_campaign_done', JSON.stringify(campaignDone));
   })();
   function saveCampaign() { localStorage.setItem('los_campaign_done', JSON.stringify(campaignDone)); }
   function campaignPos() {
@@ -636,9 +673,12 @@
     pause: document.getElementById('pauseOverlay'),
     menu: document.getElementById('menuOverlay'),
     settings: document.getElementById('settingsOverlay'),
+    levels: document.getElementById('levelsOverlay'),
     modeNote: document.getElementById('modeNote'),
     ruleHint: document.getElementById('ruleHint'),
-    winZen: document.getElementById('winZen')
+    winZen: document.getElementById('winZen'),
+    winBonus: document.getElementById('winBonus'),
+    winSuggest: document.getElementById('winSuggest')
   };
 
   /* ---------- Хранилище рекордов ---------- */
@@ -804,24 +844,64 @@
     if (actx && music.bus) music.bus.gain.setTargetAtTime(0, actx.currentTime, 0.5);
   }
 
-  /* ---------- Уровни: открываются по очереди, 3×3 → 5×5 → 7×7 (9×9 — бонус кампании) ---------- */
+  /* ---------- Окно «Уровни»: карта кампании 4×3 и выбор доски ---------- */
+  var DIFF_NAMES = { easy: 'Легко', medium: 'Средне', hard: 'Тяжело' };
   function renderLevels() {
-    // во время вызова дня и после полного прохождения кампании размеры на главном экране скрываем
-    var seg = document.getElementById('levelSeg');
-    seg.style.display = (state.daily || campaignPos() === null) ? 'none' : '';
-    document.querySelectorAll('#levelSeg button').forEach(function (b) {
-      var locked = Number(b.dataset.n) > state.unlocked;
-      b.disabled = locked;
-      b.textContent = locked ? '🔒' : (b.dataset.n + '×' + b.dataset.n);
-      b.classList.toggle('active', Number(b.dataset.n) === state.n);
+    var grid = document.getElementById('levelsGrid');
+    var done9 = 0;
+    CAMPAIGN.forEach(function (c) { if (campaignDone[c.n + '_' + c.d]) done9++; });
+    var pos = campaignPos();
+    document.getElementById('levelsZen').textContent = pos
+      ? ('кампания: ' + done9 + ' из 9 · следующая — ' + pos.n + '×' + pos.n + ', ' + DIFF_NAMES[pos.d].toLowerCase())
+      : 'кампания пройдена · открыт бонусный размер 9×9';
+    document.getElementById('levelsNote').textContent =
+      'Играет выбранный в настройках режим и цель. Крест и Лучи — разные головоломки на одной доске.';
+    grid.innerHTML = '';
+    ALL_LEVELS.forEach(function (n) {
+      var row = document.createElement('div');
+      row.className = 'lvl-row';
+      var name = document.createElement('div');
+      name.className = 'lvl-name';
+      name.textContent = n + '×' + n;
+      row.appendChild(name);
+      DIFFS.forEach(function (d) {
+        var cell = document.createElement('button');
+        cell.className = 'lvl-cell';
+        cell.dataset.n = n;
+        cell.dataset.diff = d;
+        var done = !!campaignDone[n + '_' + d];
+        var locked = n > state.unlocked;
+        if (done) cell.classList.add('done');
+        else if (locked) cell.classList.add('locked');
+        if (!pos && n === state.n && d === state.diff) cell.classList.add('current');
+        if (pos && pos.n === n && pos.d === d) cell.classList.add('current');
+        cell.textContent = locked ? '🔒' : (done ? '✓ ' : '') + DIFF_NAMES[d];
+        row.appendChild(cell);
+      });
+      grid.appendChild(row);
     });
-    // селектор размера в настройках — только после прохождения кампании
-    var done = campaignPos() === null;
-    var setRow = document.getElementById('nSetRow');
-    if (setRow) setRow.style.display = done ? '' : 'none';
-    document.querySelectorAll('#nSetSeg button').forEach(function (b) {
-      b.classList.toggle('active', Number(b.dataset.n) === state.n);
-    });
+  }
+  function pickLevel(n, d) {
+    if (n > state.unlocked) return;   // закрыто — не играбельно
+    state.daily = false;
+    state.n = n;
+    state.diff = d;
+    localStorage.setItem('los_diff', d);
+    els.levels.classList.remove('show');
+    els.menu.classList.remove('show');
+    syncMenu();
+    newGame();
+  }
+
+  /* ---------- Тост-поздравление ---------- */
+  var toastEl = document.getElementById('toast');
+  var toastTimer = null;
+  function toast(msg) {
+    if (!toastEl) return;
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2600);
   }
 
   /* ---------- Аромапалочка: тление за 5 минут партийного времени ---------- */
@@ -1043,6 +1123,8 @@
     els.time.textContent = '0:00';
     updateIncense();
     els.win.classList.remove('show');
+    els.winBonus.hidden = true;
+    els.winSuggest.hidden = true;
     els.pause.classList.remove('show');
     els.ruleHint.textContent = color === L.BLACK
       ? 'Переверни все белые камни чёрной стороной вверх'
@@ -1097,9 +1179,6 @@
     els.ruleHint.textContent = targetColor() === L.BLACK
       ? 'Переверни все белые камни чёрной стороной вверх'
       : 'Переверни все чёрные камни белой стороной вверх';
-    document.querySelectorAll('#levelSeg button').forEach(function (b) {
-      b.classList.toggle('active', Number(b.dataset.n) === state.n);
-    });
     renderLevels(); paintGrid(); render(); syncMenu(); updateIncense();
     if (state.daily) {
       var rec = localStorage.getItem(dailyKey());
@@ -1171,7 +1250,8 @@
     // прошли комбинацию кампании — открываем следующую (или весь список после финала)
     campaignDone[n + '_' + state.diff] = 1;
     saveCampaign();
-    state.unlocked = campaignPos() === null ? 9 : campaignUnlocked();
+    var campaignComplete = campaignPos() === null;
+    state.unlocked = campaignComplete ? 9 : campaignUnlocked();
     renderLevels();
     els.winZen.textContent = state.target === 'black'
       ? 'все камни обратились тени'
@@ -1179,6 +1259,27 @@
     els.winDetails.textContent = 'Уровень ' + n + '×' + n + ' · ' +
       fmtTime(state.elapsed) + ' · ' + state.moves + ' ходов';
     els.winRecord.textContent = isRecord ? '✦ Новый рекорд! ✦' : 'Рекорд: ' + fmtTime(prev);
+    // поздравление: финал кампании или следующий круг сложности
+    els.winBonus.hidden = true;
+    els.winBonus.textContent = '';
+    if (campaignComplete) {
+      els.winBonus.textContent = '✦ Кампания пройдена! Открыт размер 9×9 ✦';
+      els.winBonus.hidden = false;
+    } else {
+      var nextPos = campaignPos();
+      if (nextPos && DIFFS.indexOf(nextPos.d) > DIFFS.indexOf(state.diff)) {
+        els.winBonus.textContent = 'Следующая остановка — сложность «' + DIFF_NAMES[nextPos.d] + '»';
+        els.winBonus.hidden = false;
+      }
+    }
+    // однажды предлагаем «Крест» после покорения большой доски «Лучами»
+    els.winSuggest.hidden = true;
+    els.winSuggest.textContent = '';
+    if (n === 9 && state.mode === 'rays' && !localStorage.getItem('los_hint_cross')) {
+      localStorage.setItem('los_hint_cross', '1');
+      els.winSuggest.textContent = 'Попробуй режим «Крест» на большой доске — совсем другая головоломка.';
+      els.winSuggest.hidden = false;
+    }
     renderBest();
     setTimeout(function () { els.win.classList.add('show'); }, 450);
   }
@@ -1329,14 +1430,13 @@
   }
 
   /* ---------- События ---------- */
-  document.getElementById('levelSeg').addEventListener('click', function (e) {
-    var btn = e.target.closest('button'); if (!btn) return;
-    if (btn.disabled) return;
-    state.daily = false;
-    state.n = Number(btn.dataset.n);
-    var seg = document.getElementById('levelSeg');
-    seg.querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b === btn); });
-    newGame();
+  /* Окно «Уровни»: выбор ячейки размер × сложность */
+  document.getElementById('levelsGrid').addEventListener('click', function (e) {
+    var cell = e.target.closest('.lvl-cell'); if (!cell) return;
+    pickLevel(Number(cell.dataset.n), cell.dataset.diff);
+  });
+  document.getElementById('closeLevelsBtn').addEventListener('click', function () {
+    els.levels.classList.remove('show');
   });
   els.undo.addEventListener('click', onUndo);
   document.getElementById('againBtn').addEventListener('click', newGame);
@@ -1344,10 +1444,14 @@
   document.getElementById('nextBtn').addEventListener('click', function () {
     state.daily = false;
     var pos = campaignPos();
+    var prevTier = DIFFS.indexOf(state.diff);
     if (pos) {
       // следующая непройденная комбинация кампании (сложность растёт: easy → medium → hard)
       state.n = pos.n;
       state.diff = pos.d;
+      if (DIFFS.indexOf(pos.d) > prevTier) {
+        toast('Открыта сложность «' + DIFF_NAMES[pos.d] + '»!');
+      }
     } else {
       // кампания пройдена — свободный выбор
       state.n = ALL_LEVELS[(ALL_LEVELS.indexOf(state.n) + 1) % ALL_LEVELS.length];
@@ -1376,16 +1480,7 @@
   });
   document.getElementById('menuSettingsBtn').addEventListener('click', function () {
     syncMenu();
-    renderLevels();   // актуальность селектора «Уровень» в настройках
     els.settings.classList.add('show');   // меню остаётся под настройками
-  });
-  /* Селектор размера доски в настройках (доступен после прохождения кампании) */
-  document.getElementById('nSetSeg').addEventListener('click', function (e) {
-    var btn = e.target.closest('button'); if (!btn) return;
-    state.daily = false;
-    state.n = Number(btn.dataset.n);
-    renderLevels();
-    newGame();
   });
   document.getElementById('closeSettingsBtn').addEventListener('click', function () {
     els.settings.classList.remove('show');
@@ -1396,7 +1491,8 @@
   });
   document.getElementById('menuNewBtn').addEventListener('click', function () {
     els.menu.classList.remove('show');
-    newGame();
+    renderLevels();
+    els.levels.classList.add('show');   // новая игра — с выбором доски из карты уровней
   });
   document.getElementById('menuStatsBtn').addEventListener('click', function () {
     els.menu.classList.remove('show');
@@ -1505,7 +1601,7 @@
     localStorage.removeItem('los_wins');
     renderStats(); renderBest();
   });
-  [els.win, els.stats, els.pause, els.menu, els.settings].forEach(function (ov) {
+  [els.win, els.stats, els.pause, els.menu, els.settings, els.levels].forEach(function (ov) {
     ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('show'); });
   });
 

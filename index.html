@@ -440,6 +440,7 @@
       <button class="btn" id="againBtn">Играть снова</button>
       <button class="btn small" id="shareBtn">⤴ Поделиться</button>
       <button class="btn" id="nextBtn">Следующий уровень</button>
+      <button class="btn small" id="winMenuBtn">В меню</button>
     </div>
   </div>
 </div>
@@ -1691,6 +1692,11 @@
   });
   els.undo.addEventListener('click', onUndo);
   document.getElementById('againBtn').addEventListener('click', newGame);
+  document.getElementById('winMenuBtn').addEventListener('click', function () {
+    els.win.classList.remove('show');
+    syncMenu();
+    els.menu.classList.add('show');
+  });
   document.getElementById('shareBtn').addEventListener('click', shareResult);
   document.getElementById('nextBtn').addEventListener('click', function () {
     state.daily = false;

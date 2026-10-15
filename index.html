@@ -381,6 +381,17 @@
   /* Бонусные строки в окне победы */
   .win-bonus { margin-top: 8px; color: #7a5a1e; font-weight: 700; letter-spacing: 0.03em; }
   .win-suggest { margin-top: 6px; font-style: italic; opacity: 0.85; }
+  /* Значок музыки в углу: вкл/выкл без похода в настройки */
+  .music-toggle {
+    position: fixed; right: 14px; bottom: 14px; z-index: 40;
+    width: 46px; height: 46px; border-radius: 50%;
+    border: 1px solid rgba(60, 45, 20, 0.25);
+    background: rgba(255, 253, 247, 0.92);
+    font-size: 21px; line-height: 1; cursor: pointer;
+    box-shadow: 0 2px 10px rgba(60, 45, 20, 0.25);
+  }
+  .music-toggle:active { transform: scale(0.94); }
+  .music-toggle.muted { opacity: 0.6; }
 </style>
 </head>
 <body>
@@ -396,6 +407,7 @@
   <div><b>ХОДЫ</b><span id="moves">0</span></div>
   <div><b>ВРЕМЯ</b><span id="time">0:00</span></div>
   <div><b>РЕКОРД</b><span id="best">—</span></div>
+  <div><b>СЛОЖНОСТЬ</b><span id="diffLabel">—</span></div>
 </div>
 
 <div class="rule-hint" id="ruleHint">Переверни все чёрные камни белой стороной вверх</div>
@@ -411,6 +423,7 @@
 </div>
 
 <div class="sound-hint" id="soundHint" hidden>🔈 коснитесь экрана — зазвучит музыка</div>
+<button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл">🔊</button>
 
 <!-- Победа -->
 <div class="overlay" id="winOverlay">
@@ -425,6 +438,19 @@
       <button class="btn" id="againBtn">Играть снова</button>
       <button class="btn small" id="shareBtn">⤴ Поделиться</button>
       <button class="btn" id="nextBtn">Следующий уровень</button>
+    </div>
+  </div>
+</div>
+
+<!-- Выбор пути после завершения кампании режима -->
+<div class="overlay" id="modeOverlay">
+  <div class="card">
+    <h2 id="modeDoneTitle">КАМПАНИЯ ПРОЙДЕНА</h2>
+    <div class="zen" id="modeDoneText"></div>
+    <div class="row">
+      <button class="btn" id="modeStayBtn">Остаться</button>
+      <button class="btn" id="modeCrossBtn">Крест</button>
+      <button class="btn" id="modeDiagBtn">Диагонали</button>
     </div>
   </div>
 </div>
@@ -447,6 +473,15 @@
   <div class="card">
     <h2>СТАТИСТИКА</h2>
     <div class="zen">список побед</div>
+    <div class="menu-row">
+      <div class="menu-label">Режим</div>
+      <div class="seg" id="statsFilter">
+        <button data-f="all" class="active">Все</button>
+        <button data-f="rays">Лучи</button>
+        <button data-f="cross">Крест</button>
+        <button data-f="diagonals">Диагонали</button>
+      </div>
+    </div>
     <div id="dailyBody"></div>
     <div id="winsBody"></div>
     <div class="row">
@@ -610,60 +645,76 @@
 
   /* ---------- Кампания: три круга с ростом сложности ----------
    * Легко 3→5→7, затем средне 3→5→7, затем тяжело 3→5→7.
-   * Вся кампания пройдена — открывается бонусный размер 9×9 и выбор
-   * уровня переезжает в настройки, освобождая главный экран.
+   * У каждого режима (Лучи/Крест/Диагонали) — своя кампания из 9 комбинаций.
+   * Кампания режима пройдена — открывается бонусный размер 9×9 этого режима
+   * и предлагается выбор: остаться или начать путь в другом режиме.
    */
   var CAMPAIGN = [];
   DIFFS.forEach(function (d) { LEVELS.forEach(function (n) { CAMPAIGN.push({ n: n, d: d }); }); });
+  var MODE_NAMES = { rays: 'Лучи', cross: 'Крест', diagonals: 'Диагонали' };
+  var CAMPAIGN_MODES = ['rays', 'cross', 'diagonals'];
+  var TIER_TOAST = { medium: 'Доступны уровни средней трудности!', hard: 'Доступны уровни высокой трудности!' };
   var campaignDone = {};
   (function loadCampaign() {
     var raw = localStorage.getItem('los_campaign_done');
     if (raw) { try { campaignDone = JSON.parse(raw) || {}; } catch (e) {} }
+    var changed = false;
+    // миграция: ключи старого формата «3_easy» без префикса режима — это кампания «Лучи»
+    Object.keys(campaignDone).forEach(function (k) {
+      if (CAMPAIGN_MODES.indexOf(k.split('_')[0]) < 0) {
+        campaignDone['rays_' + k] = campaignDone[k];
+        delete campaignDone[k];
+        changed = true;
+      }
+    });
     // миграция: ранее открытые размеры и существующие рекорды считаем пройденными.
     // Проверка идемпотентна — выполняется при каждом запуске, чтобы ветераны,
     // у кого los_campaign_done уже записан частично, тоже получили засчитанную кампанию.
     var oldUnlocked = Number(localStorage.getItem('los_unlocked')) || 3;
-    var changed = false;
-    if (oldUnlocked >= 5 && !campaignDone['3_easy']) { campaignDone['3_easy'] = 1; changed = true; }
+    if (oldUnlocked >= 5 && !campaignDone['rays_3_easy']) { campaignDone['rays_3_easy'] = 1; changed = true; }
     if (oldUnlocked >= 7) {
       // ветераны со старым полным доступом прошли прежнюю прогрессию целиком —
-      // засчитываем кампанию полностью, бонусный 9×9 им положен
+      // засчитываем кампанию «Лучи» полностью, бонусный 9×9 им положен
       CAMPAIGN.forEach(function (c) {
-        if (!campaignDone[c.n + '_' + c.d]) { campaignDone[c.n + '_' + c.d] = 1; changed = true; }
+        if (!campaignDone['rays_' + c.n + '_' + c.d]) { campaignDone['rays_' + c.n + '_' + c.d] = 1; changed = true; }
       });
     }
-    CAMPAIGN.forEach(function (c) {
-      if (campaignDone[c.n + '_' + c.d]) return;
-      outer:
-      for (var mi = 0; mi < 2; mi++) for (var ti = 0; ti < 2; ti++) {
-        var m = ['rays', 'cross'][mi], t = ['white', 'black'][ti];
-        if (localStorage.getItem('los_best_' + c.n + '_' + m + '_' + c.d + '_' + t) !== null) {
-          campaignDone[c.n + '_' + c.d] = 1;
-          changed = true;
-          break outer;
+    // рекорды: los_best_{n}_{mode}_{diff}_{target} засчитываются в кампанию своего режима
+    CAMPAIGN_MODES.forEach(function (m) {
+      CAMPAIGN.forEach(function (c) {
+        var key = m + '_' + c.n + '_' + c.d;
+        if (campaignDone[key]) return;
+        for (var ti = 0; ti < 2; ti++) {
+          var t = ['white', 'black'][ti];
+          if (localStorage.getItem('los_best_' + c.n + '_' + m + '_' + c.d + '_' + t) !== null) {
+            campaignDone[key] = 1;
+            changed = true;
+            break;
+          }
         }
-      }
+      });
     });
     if (changed || !raw) localStorage.setItem('los_campaign_done', JSON.stringify(campaignDone));
   })();
   function saveCampaign() { localStorage.setItem('los_campaign_done', JSON.stringify(campaignDone)); }
-  function campaignPos() {
+  function campaignPos(mode) {
     for (var i = 0; i < CAMPAIGN.length; i++) {
-      if (!campaignDone[CAMPAIGN[i].n + '_' + CAMPAIGN[i].d]) return CAMPAIGN[i];
+      if (!campaignDone[(mode || state.mode) + '_' + CAMPAIGN[i].n + '_' + CAMPAIGN[i].d]) return CAMPAIGN[i];
     }
-    return null;   // null — кампания пройдена целиком
+    return null;   // null — кампания режима пройдена целиком
   }
-  function campaignUnlocked() {
-    var u = 3, pos = campaignPos();
+  function campaignUnlocked(mode) {
+    var u = 3, pos = campaignPos(mode);
     CAMPAIGN.forEach(function (c) {
-      if (campaignDone[c.n + '_' + c.d] || (pos && pos.n === c.n && pos.d === c.d)) u = Math.max(u, c.n);
+      if (campaignDone[(mode || state.mode) + '_' + c.n + '_' + c.d] || (pos && pos.n === c.n && pos.d === c.d)) u = Math.max(u, c.n);
     });
     return u;
   }
 
+  var initialMode = ['cross', 'diagonals'].indexOf(localStorage.getItem('los_mode')) >= 0 ? localStorage.getItem('los_mode') : 'rays';
   var state = {
     n: 5,
-    mode: localStorage.getItem('los_mode') === 'cross' ? 'cross' : 'rays',
+    mode: initialMode,
     diff: DIFFS.indexOf(localStorage.getItem('los_diff')) >= 0 ? localStorage.getItem('los_diff') : 'medium',
     target: localStorage.getItem('los_target') === 'black' ? 'black' : 'white',
     sound: localStorage.getItem('los_sound') !== 'off',
@@ -679,7 +730,7 @@
     vibro: localStorage.getItem('los_vibro') !== 'off',
     rocks: localStorage.getItem('los_rocks') === 'on',
     volume: Math.min(1, Math.max(0, Number(localStorage.getItem('los_volume')) || 0.8)),
-    unlocked: campaignPos() === null ? 9 : campaignUnlocked(),
+    unlocked: campaignPos(initialMode) === null ? 9 : campaignUnlocked(initialMode),
     board: [],
     startBoard: null,
     blocks: [],        // индексы «сердцевин» — препятствий, не переворачиваются
@@ -709,10 +760,13 @@
     moves: document.getElementById('moves'),
     time: document.getElementById('time'),
     best: document.getElementById('best'),
+    diffLabel: document.getElementById('diffLabel'),
+    musicToggle: document.getElementById('musicToggle'),
     undo: document.getElementById('undoBtn'),
     win: document.getElementById('winOverlay'),
     winDetails: document.getElementById('winDetails'),
     winRecord: document.getElementById('winRecord'),
+    mode: document.getElementById('modeOverlay'),
     stats: document.getElementById('statsOverlay'),
     winsBody: document.getElementById('winsBody'),
     dailyBody: document.getElementById('dailyBody'),
@@ -834,6 +888,12 @@
    */
   var MUSIC_FILES = { zen: 'music-theme.mp3', fire: 'music-fire.mp3', rain: 'music-rain.mp3' };
   var music = { on: false, bus: null, bufs: {}, src: null, track: null };
+  var musicMuted = localStorage.getItem('los_music_muted') === '1';
+  function updateMusicToggle() {
+    els.musicToggle.hidden = state.music === 'off';   // музыка выключена в настройках — значка нет
+    els.musicToggle.textContent = musicMuted ? '🔇' : '🔊';
+    els.musicToggle.classList.toggle('muted', musicMuted);
+  }
 
   function musicBusEnsure() {
     if (!music.bus) {
@@ -867,7 +927,7 @@
   }
   function musicStart() {
     var track = state.music;
-    if (track === 'off') return;
+    if (track === 'off' || musicMuted) return;
     var ctx = audio(); if (!ctx) return;
     musicBusEnsure();
     music.on = true;
@@ -896,14 +956,16 @@
   var DIFF_NAMES = { easy: 'Легко', medium: 'Средне', hard: 'Тяжело' };
   function renderLevels() {
     var grid = document.getElementById('levelsGrid');
+    var m = state.mode;
+    var unlocked = campaignPos(m) === null ? 9 : campaignUnlocked(m);
     var done9 = 0;
-    CAMPAIGN.forEach(function (c) { if (campaignDone[c.n + '_' + c.d]) done9++; });
-    var pos = campaignPos();
+    CAMPAIGN.forEach(function (c) { if (campaignDone[m + '_' + c.n + '_' + c.d]) done9++; });
+    var pos = campaignPos(m);
     document.getElementById('levelsZen').textContent = pos
-      ? ('кампания: ' + done9 + ' из 9 · следующая — ' + pos.n + '×' + pos.n + ', ' + DIFF_NAMES[pos.d].toLowerCase())
-      : 'кампания пройдена · открыт бонусный размер 9×9';
+      ? ('кампания режима «' + MODE_NAMES[m] + '»: ' + done9 + ' из 9 · следующая — ' + pos.n + '×' + pos.n + ', ' + DIFF_NAMES[pos.d].toLowerCase())
+      : 'кампания режима «' + MODE_NAMES[m] + '» пройдена · открыт бонусный размер 9×9';
     document.getElementById('levelsNote').textContent =
-      'Играет выбранный в настройках режим и цель. Крест и Лучи — разные головоломки на одной доске.';
+      'У каждого режима — своя кампания: уровни открываются по мере прохождения. Замочек — ещё не доступно.';
     grid.innerHTML = '';
     ALL_LEVELS.forEach(function (n) {
       var row = document.createElement('div');
@@ -917,8 +979,8 @@
         cell.className = 'lvl-cell';
         cell.dataset.n = n;
         cell.dataset.diff = d;
-        var done = !!campaignDone[n + '_' + d];
-        var locked = n > state.unlocked;
+        var done = !!campaignDone[m + '_' + n + '_' + d];
+        var locked = n > unlocked;
         if (done) cell.classList.add('done');
         else if (locked) cell.classList.add('locked');
         if (!pos && n === state.n && d === state.diff) cell.classList.add('current');
@@ -930,7 +992,7 @@
     });
   }
   function pickLevel(n, d) {
-    if (n > state.unlocked) return;   // закрыто — не играбельно
+    if (n > campaignUnlocked(state.mode) && campaignPos(state.mode) !== null) return;   // закрыто — не играбельно
     state.daily = false;
     state.n = n;
     state.diff = d;
@@ -950,6 +1012,31 @@
     toastEl.classList.add('show');
     if (toastTimer) clearTimeout(toastTimer);
     toastTimer = setTimeout(function () { toastEl.classList.remove('show'); }, 2600);
+  }
+
+  /* ---------- Окно выбора пути: финал кампании режима ---------- */
+  function showModeChoice(mode) {
+    document.getElementById('modeDoneTitle').textContent =
+      'КАМПАНИЯ «' + MODE_NAMES[mode].toUpperCase() + '» ПРОЙДЕНА';
+    document.getElementById('modeDoneText').textContent =
+      'Все девять комбинаций позади — от лёгкой тройки до тяжёлой семёрки. Можно продолжать в этом режиме или испытать другой путь.';
+    els.mode.classList.add('show');
+  }
+  function switchModeFromChoice(m) {
+    els.mode.classList.remove('show');
+    els.win.classList.remove('show');
+    state.daily = false;
+    state.mode = m;
+    localStorage.setItem('los_mode', m);
+    var pos = campaignPos(m);
+    if (pos) { state.n = pos.n; state.diff = pos.d; }
+    state.unlocked = pos ? campaignUnlocked(m) : 9;
+    syncMenu();
+    renderLevels();
+    newGame();
+    toast(pos
+      ? 'Новый путь — «' + MODE_NAMES[m] + '»: ' + pos.n + '×' + pos.n + ', ' + DIFF_NAMES[pos.d].toLowerCase()
+      : '«' + MODE_NAMES[m] + '» уже пройден — свободный выбор');
   }
 
   /* ---------- Аромапалочка: тление за 5 минут партийного времени ---------- */
@@ -1239,6 +1326,7 @@
     els.win.classList.remove('show');
     els.winBonus.hidden = true;
     els.winSuggest.hidden = true;
+    els.mode.classList.remove('show');
     els.pause.classList.remove('show');
     els.limit.classList.remove('show');
     els.ruleHint.textContent = color === L.BLACK
@@ -1247,6 +1335,7 @@
     renderLevels();   // видимость сегмента размеров зависит от режима (daily/кампания)
     paintGrid();
     render();
+    els.diffLabel.textContent = DIFF_NAMES[state.diff] || '—';
     if (state.daily) {
       var rec = localStorage.getItem(dailyKey());
       els.best.textContent = rec ? fmtTime(JSON.parse(rec).time) : '—';
@@ -1393,11 +1482,12 @@
     if (isRecord) localStorage.setItem(bestKey(n), String(state.elapsed));
     addWin({ date: new Date().toISOString().slice(0, 10), level: n, mode: state.mode, diff: state.diff, target: state.target, time: state.elapsed, moves: state.moves });
     lastWin = { daily: false, n: n, mode: state.mode, diff: state.diff, time: state.elapsed, moves: state.moves };
-    // прошли комбинацию кампании — открываем следующую (или весь список после финала)
-    campaignDone[n + '_' + state.diff] = 1;
+    // прошли комбинацию кампании своего режима — открываем следующую
+    var prevPos = campaignPos(state.mode);
+    campaignDone[state.mode + '_' + n + '_' + state.diff] = 1;
     saveCampaign();
-    var campaignComplete = campaignPos() === null;
-    state.unlocked = campaignComplete ? 9 : campaignUnlocked();
+    var campaignComplete = prevPos !== null && campaignPos(state.mode) === null;   // только что финишировали кампанию режима
+    state.unlocked = campaignComplete ? 9 : campaignUnlocked(state.mode);
     renderLevels();
     els.winZen.textContent = state.target === 'black'
       ? 'все камни обратились тени'
@@ -1405,29 +1495,25 @@
     els.winDetails.textContent = 'Уровень ' + n + '×' + n + ' · ' +
       fmtTime(state.elapsed) + ' · ' + state.moves + ' ходов';
     els.winRecord.textContent = isRecord ? '✦ Новый рекорд! ✦' : 'Рекорд: ' + fmtTime(prev);
-    // поздравление: финал кампании или следующий круг сложности
+    // поздравление о следующем круге сложности (финал — отдельным окном выбора пути)
     els.winBonus.hidden = true;
     els.winBonus.textContent = '';
-    if (campaignComplete) {
-      els.winBonus.textContent = '✦ Кампания пройдена! Открыт размер 9×9 ✦';
-      els.winBonus.hidden = false;
-    } else {
-      var nextPos = campaignPos();
+    if (!campaignComplete) {
+      var nextPos = campaignPos(state.mode);
       if (nextPos && DIFFS.indexOf(nextPos.d) > DIFFS.indexOf(state.diff)) {
-        els.winBonus.textContent = 'Следующая остановка — сложность «' + DIFF_NAMES[nextPos.d] + '»';
+        els.winBonus.textContent = TIER_TOAST[nextPos.d];
         els.winBonus.hidden = false;
       }
     }
-    // однажды предлагаем «Крест» после покорения большой доски «Лучами»
     els.winSuggest.hidden = true;
     els.winSuggest.textContent = '';
-    if (n === 9 && state.mode === 'rays' && !localStorage.getItem('los_hint_cross')) {
-      localStorage.setItem('los_hint_cross', '1');
-      els.winSuggest.textContent = 'Попробуй режим «Крест» на большой доске — совсем другая головоломка.';
-      els.winSuggest.hidden = false;
-    }
     renderBest();
     setTimeout(function () { els.win.classList.add('show'); }, 450);
+    // финал кампании режима — один раз предлагаем выбрать путь дальше
+    if (campaignComplete && !localStorage.getItem('los_mode_done_' + state.mode)) {
+      localStorage.setItem('los_mode_done_' + state.mode, '1');
+      setTimeout(function () { showModeChoice(state.mode); }, 700);
+    }
   }
 
   /* ---------- Поделиться результатом (как сетка в Wordle) ---------- */
@@ -1486,6 +1572,7 @@
 
   /* ---------- Статистика ---------- */
   var DIFF_LABELS = { easy: 'Легко', medium: 'Средне', hard: 'Тяжело' };
+  var statsFilter = 'all';
 
   function winsTable(rows) {
     var body = rows.map(function (w) {
@@ -1513,9 +1600,11 @@
         ? '<div class="diff-title">Вызов дня · серия ' + streak + '</div>'
         : '';
     }
-    var wins = getWins();
+    var wins = getWins().filter(function (w) { return statsFilter === 'all' || w.mode === statsFilter; });
     if (wins.length === 0) {
-      els.winsBody.innerHTML = '<div class="empty">Пока нет побед — доска ждёт.</div>';
+      els.winsBody.innerHTML = '<div class="empty">' +
+        (statsFilter === 'all' ? 'Пока нет побед — доска ждёт.' : 'В этом режиме побед пока нет — доска ждёт.') +
+        '</div>';
       return;
     }
     // разбиваем по сложности; записи до появления сложности попадают в «Средне»
@@ -1530,6 +1619,13 @@
     });
     els.winsBody.innerHTML = html;
   }
+
+  document.getElementById('statsFilter').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    statsFilter = btn.dataset.f;
+    this.querySelectorAll('button').forEach(function (b) { b.classList.toggle('active', b === btn); });
+    renderStats();
+  });
 
   /* ---------- Пауза ---------- */
   var pauseBtn = document.getElementById('pauseBtn');
@@ -1596,23 +1692,27 @@
   document.getElementById('shareBtn').addEventListener('click', shareResult);
   document.getElementById('nextBtn').addEventListener('click', function () {
     state.daily = false;
-    var pos = campaignPos();
+    var pos = campaignPos(state.mode);
     var prevTier = DIFFS.indexOf(state.diff);
     if (pos) {
-      // следующая непройденная комбинация кампании (сложность растёт: easy → medium → hard)
+      // следующая непройденная комбинация кампании режима (сложность растёт: easy → medium → hard)
       state.n = pos.n;
       state.diff = pos.d;
-      if (DIFFS.indexOf(pos.d) > prevTier) {
-        toast('Открыта сложность «' + DIFF_NAMES[pos.d] + '»!');
-      }
+      if (DIFFS.indexOf(pos.d) > prevTier) toast(TIER_TOAST[pos.d]);
     } else {
-      // кампания пройдена — свободный выбор
+      // кампания режима пройдена — свободный выбор
       state.n = ALL_LEVELS[(ALL_LEVELS.indexOf(state.n) + 1) % ALL_LEVELS.length];
     }
     syncMenu();
     renderLevels();
     newGame();
   });
+  /* Окно выбора пути после финала кампании */
+  document.getElementById('modeStayBtn').addEventListener('click', function () {
+    els.mode.classList.remove('show');
+  });
+  document.getElementById('modeCrossBtn').addEventListener('click', function () { switchModeFromChoice('cross'); });
+  document.getElementById('modeDiagBtn').addEventListener('click', function () { switchModeFromChoice('diagonals'); });
   /* Пауза */
   document.getElementById('pauseBtn').addEventListener('click', function () {
     if (state.paused) { resumeGame(); } else { pauseGame(); }
@@ -1624,12 +1724,20 @@
     els.menu.classList.add('show');
   });
   /* Меню */
+  var menuPausedByOpen = false;   // меню само поставило игру на паузу
   document.getElementById('menuBtn').addEventListener('click', function () {
+    menuPausedByOpen = false;
+    if (!state.paused && !state.locked) {
+      pauseGame();
+      menuPausedByOpen = true;   // «Закрыть» из меню продолжит партию автоматически
+    }
     syncMenu();
     els.menu.classList.add('show');
   });
   document.getElementById('closeMenuBtn').addEventListener('click', function () {
     els.menu.classList.remove('show');
+    if (menuPausedByOpen && state.paused && !state.locked) resumeGame();
+    menuPausedByOpen = false;
   });
   document.getElementById('menuSettingsBtn').addEventListener('click', function () {
     syncMenu();
@@ -1640,6 +1748,7 @@
   });
   document.getElementById('menuResumeBtn').addEventListener('click', function () {
     els.menu.classList.remove('show');
+    menuPausedByOpen = false;
     resumeGame();
   });
   document.getElementById('menuNewBtn').addEventListener('click', function () {
@@ -1658,6 +1767,10 @@
     state.daily = false;
     state.mode = btn.dataset.mode;
     localStorage.setItem('los_mode', state.mode);
+    // у нового режима своя кампания: если большой размер ещё не открыт — опускаемся до доступного
+    var u = campaignPos(state.mode) === null ? 9 : campaignUnlocked(state.mode);
+    if (state.n > u) state.n = u;
+    state.unlocked = u;
     syncMenu();
     newGame();
   });
@@ -1699,7 +1812,15 @@
     state.music = track;
     localStorage.setItem('los_music', track);
     syncMenu();
+    updateMusicToggle();
     if (track === 'off') musicStop(); else musicStart();
+  });
+  /* Значок музыки в углу: быстрое выкл/вкл без похода в настройки */
+  els.musicToggle.addEventListener('click', function () {
+    musicMuted = !musicMuted;
+    localStorage.setItem('los_music_muted', musicMuted ? '1' : '0');
+    updateMusicToggle();
+    if (musicMuted) musicStop(); else musicStart();
   });
   document.getElementById('hintSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
@@ -1789,6 +1910,7 @@
   renderLevels();
   updateIncense();
   updateDailyBtn();
+  updateMusicToggle();
   if (!restoreSession()) newGame();   // есть сохранённая партия — продолжаем её
 })();
 </script>

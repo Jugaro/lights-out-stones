@@ -518,7 +518,7 @@
       <button class="btn small" id="dailyBtn">☀ Вызов дня</button>
       <button class="btn" id="menuSettingsBtn">Настройки</button>
       <button class="btn" id="menuStatsBtn">Статистика</button>
-      <button class="btn small" id="closeMenuBtn">Закрыть</button>
+      <button class="btn small" id="closeMenuBtn">Выйти</button>
     </div>
   </div>
 </div>
@@ -1338,7 +1338,9 @@
     renderLevels();   // видимость сегмента размеров зависит от режима (daily/кампания)
     paintGrid();
     render();
-    els.diffLabel.textContent = DIFF_NAMES[state.diff] || '—';
+    // в вызове дня сложность не выбирается — не показываем её в статус-баре
+    els.diffLabel.textContent = state.daily ? '' : (DIFF_NAMES[state.diff] || '—');
+    els.diffLabel.parentElement.style.display = state.daily ? 'none' : '';
     if (state.daily) {
       var rec = localStorage.getItem(dailyKey());
       els.best.textContent = rec ? fmtTime(JSON.parse(rec).time) : '—';
@@ -1746,6 +1748,10 @@
     els.menu.classList.remove('show');
     if (menuPausedByOpen && state.paused && !state.locked) resumeGame();
     menuPausedByOpen = false;
+    // уходим из приложения: window.close() срабатывает в PWA и вкладках «с историей»;
+    // если браузер не пускает — оставляем понятную подсказку
+    window.close();
+    setTimeout(function () { toast('Приложение не закрылось — сверните вкладку'); }, 400);
   });
   document.getElementById('menuSettingsBtn').addEventListener('click', function () {
     syncMenu();

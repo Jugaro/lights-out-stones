@@ -1400,7 +1400,7 @@
       rec = [];
       board = L.generateBoard(n, num, rng, mode, color, { blocks: state.blocks, presses: rec });
       tries++;
-    } while (L.isWin(board, color) && tries < 20);
+    } while (L.isWin(board, color, state.blocks) && tries < 20);
     state.n = n;
     state.mode = mode;
     state.board = board;
@@ -1518,7 +1518,7 @@
     vibro(30);
     render(r * state.n + c);
     saveSession();
-    if (L.isWin(state.board, targetColor())) { onWin(); return; }
+    if (L.isWin(state.board, targetColor(), state.blocks)) { onWin(); return; }
     // вызов дня: лимит ходов исчерпан — партия проиграна
     if (state.moveLimit && state.moves >= state.moveLimit) limitFail();
   }

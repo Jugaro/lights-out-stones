@@ -87,10 +87,12 @@
     return next;
   }
 
-  /** Решена ли доска: все камни цвета target (по умолчанию белые). */
-  function isWin(board, target) {
+  /** Решена ли доска: все видимые камни цвета target (по умолчанию белые).
+   * Клетки из blocks (препятствия) не проверяются — их цвет скрыт. */
+  function isWin(board, target, blocks) {
     target = target === undefined ? WHITE : target;
     for (var i = 0; i < board.length; i++) {
+      if (blocks && blocks.indexOf(i) >= 0) continue;
       if (board[i] !== target) return false;
     }
     return true;

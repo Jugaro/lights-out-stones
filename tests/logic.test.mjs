@@ -273,3 +273,17 @@ test('generateBoard с блоками: позиция решаема повто�
   assert.ok(L.isWin(b));
   for (const x of blocks) assert.equal(b[x], L.WHITE, `блок ${x} сменил цвет`);
 });
+
+test('isWin с блоками: закрытые клетки не учитываются', () => {
+  const n = 5;
+  const blocks = [0, 12, 24];
+  // все видимые белые, все закрытые чёрные — победа
+  const b = new Array(n * n).fill(L.WHITE);
+  for (const x of blocks) b[x] = L.BLACK;
+  assert.ok(L.isWin(b, L.WHITE, blocks));
+  // одна видимая чёрная — не победа
+  b[7] = L.BLACK;
+  assert.ok(!L.isWin(b, L.WHITE, blocks));
+  // без списка блоков та же доска — не победа
+  assert.ok(!L.isWin(b, L.WHITE));
+});

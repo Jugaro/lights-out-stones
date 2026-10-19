@@ -471,6 +471,11 @@
   }
   .music-toggle:active { transform: scale(0.94); }
   .music-toggle.muted { opacity: 0.6; }
+  /* В браузере значок — в потоке, под доской по центру; на телефоне — по-прежнему в углу */
+  @media (min-width: 641px) {
+    .music-toggle { position: static; display: block; margin: 12px auto 0; }
+    .music-toggle[hidden] { display: none; }
+  }
   /* Главное действие (крупная тёмная) и выключенные кнопки */
   .btn.primary { background: linear-gradient(160deg, #3a2c18, #241a0d); color: #f7ecd2; border-color: #241a0d; font-weight: 700; }
   .btn:disabled { opacity: 0.4; cursor: default; }

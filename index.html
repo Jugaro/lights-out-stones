@@ -78,7 +78,9 @@
     flex-wrap: wrap;
   }
   .rule-row .rule-hint { margin: 0; }
-  .rule-row #undoBtn { flex: none; padding: 8px 14px; }
+  /* Кнопка отмены хода — под таймером (своей строкой по центру под статистикой) */
+  .undo-row { display: flex; justify-content: center; margin: -4px 0 6px; }
+  .undo-row #undoBtn { padding: 8px 14px; }
   @media (min-width: 641px) {
     .rule-row { flex-direction: column; gap: 8px; }
     .rule-row .rule-hint { order: -1; }
@@ -473,14 +475,14 @@
   .music-toggle.muted { opacity: 0.6; }
   .music-toggle { color: #4a3319; }
   .music-toggle svg { width: 26px; height: 26px; display: block; }
-  /* В браузере значок «лежит» на полочке доски: по центру нижней кромки рамки.
+  /* В браузере значок — внизу по центру доски, на нижней кромке рамки.
      На телефоне — по-прежнему плавающая кнопка в углу. */
   @media (min-width: 641px) {
     .board-frame { position: relative; }
     .music-toggle {
       position: absolute;
       left: 50%;
-      bottom: -23px;   /* центр кнопки — на кромке рамки: стоит на полочке */
+      bottom: -6px;   /* кнопка на нижней кромке рамки доски, по центру */
       transform: translateX(-50%);
       display: block;
       margin: 0;
@@ -520,6 +522,9 @@
   <div><b>РЕКОРД</b><span id="best">—</span></div>
   <div><b>СЛОЖНОСТЬ</b><span id="diffLabel">—</span></div>
 </div>
+<div class="undo-row">
+  <button class="btn small" id="undoBtn" disabled>↩ Отменить ход</button>
+</div>
 <div class="camp-strip" id="campStrip" hidden>
   <span class="cap" id="campCaption"></span>
   <span class="dots" id="campDots"></span>
@@ -528,7 +533,6 @@
 
 <div class="rule-row">
   <div class="rule-hint" id="ruleHint">Переверни все чёрные камни белой стороной вверх</div>
-  <button class="btn small" id="undoBtn" disabled>↩ Отменить ход</button>
 </div>
 <!-- Туториал: подсказка-тренер для первой партии -->
 <div class="coach" id="coach" hidden>
@@ -538,7 +542,7 @@
 <div class="scene">
   <div class="board-frame">
     <div class="board" id="board"></div>
-    <button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    <button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6M18.1 6.4a8.2 8.2 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
   </div>
   <div class="incense-wrap" aria-hidden="true">
     <div class="smoke"><i></i><i></i><i></i></div>
@@ -1168,9 +1172,9 @@
   var MUSIC_FILES = { zen: 'music-theme.mp3', fire: 'music-fire.mp3', rain: 'music-rain.mp3', sakura: 'music-sakura.mp3', konnichiwa: 'music-konnichiwa.mp3' };
   var music = { on: false, bus: null, bufs: {}, src: null, track: null };
   var musicMuted = store.getItem('los_music_muted') === '1';
-  /* Значок динамика (вектор, в цветах доски): вкл — волны, выкл — крестик */
-  var SVG_SND_ON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
-  var SVG_SND_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  /* Значок динамика (вариант А: чёткий силуэт, вкл — волны, выкл — крестик) */
+  var SVG_SND_ON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6M18.1 6.4a8.2 8.2 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
+  var SVG_SND_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M16 9.4l5.2 5.6M21.2 9.4L16 15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
   function updateMusicToggle() {
     els.musicToggle.hidden = state.music === 'off';   // музыка выключена в настройках — значка нет
     els.musicToggle.innerHTML = musicMuted ? SVG_SND_OFF : SVG_SND_ON;
@@ -2396,9 +2400,15 @@
   }
   document.addEventListener('pointerdown', unlockAudio, { once: true });
   soundHint.hidden = state.music === 'off';   // музыка выключена — подсказывать нечего
-  /* Автопауза при сворачивании вкладки */
+  /* Автопауза при сворачивании вкладки/выключении экрана; музыку глушим и возобновляем */
   document.addEventListener('visibilitychange', function () {
-    if (document.hidden && !state.locked && state.moves > 0 && !state.paused) pauseGame();
+    if (document.hidden) {
+      if (!state.locked && state.moves > 0 && !state.paused) pauseGame();
+      if (music.on) { music.wasOn = music.track; musicStop(); }   // иначе WebAudio играет при выключенном экране
+    } else if (music.wasOn) {
+      var t = music.wasOn; music.wasOn = null;
+      if (state.music === t && !musicMuted) musicStart();
+    }
   });
   document.getElementById('closeStatsBtn').addEventListener('click', function () {
     els.stats.classList.remove('show');

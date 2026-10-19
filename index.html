@@ -603,7 +603,7 @@
     <div class="zen">пусть доска подождёт — мысль догонит</div>
     <div class="row menu-main">
       <button class="btn" id="resumeBtn">Продолжить</button>
-      <button class="btn small" id="restartBtn">Сыграть заново</button>
+      <button class="btn small" id="restartBtn">Заново</button>
       <button class="btn" id="pauseMenuBtn">Меню</button>
       <button class="btn small" id="endMarathonBtn" hidden>Завершить марафон</button>
     </div>
@@ -1437,6 +1437,7 @@
     var cells = els.board.children;
     var idx = Array.prototype.indexOf.call(cells, cell);
     if (idx < 0) return;
+    if (state.blocks.indexOf(idx) >= 0) return;   // сердцевина не нажимается — и линию не подсвечиваем
     var n = state.n;
     // подсвечиваем ровно те камни, которые перевернёт нажатие (сердцевины — никогда)
     L.pressMask(n, Math.floor(idx / n), idx % n, state.mode).forEach(function (i2) {
@@ -1570,10 +1571,9 @@
     var color = targetColor();
     var range = PRESSES[mode][state.diff][n];
     if (state.daily) {
-      // вызов дня: фиксированные параметры, доска от даты; цель всегда белая —
-      // иначе доска решаема к белым, а победа требует чёрных (нерешаемо)
-      n = 5; mode = 'rays'; color = L.WHITE;
-      state.target = 'white';
+      // вызов дня: фиксированные параметры, доска от даты; цель — как в настройках
+      n = 5; mode = 'rays';
+      color = targetColor();
       range = [6, 6];
       rng = mulberry32(dailySeed());
     }

@@ -886,7 +886,10 @@
     return v === null ? null : Number(v);
   }
   function getWins() {
-    try { return JSON.parse(localStorage.getItem('los_wins') || '[]'); }
+    try {
+      var w = JSON.parse(localStorage.getItem('los_wins') || '[]');
+      return Array.isArray(w) ? w : [];   // валидный JSON, но не массив — считаем список пустым
+    }
     catch (e) { return []; }
   }
   function addWin(entry) {
@@ -1290,6 +1293,13 @@
     var d = new Date();
     return 'los_daily_' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
   }
+  /* Безопасное чтение записи дня: битый JSON не должен ронять игру */
+  function readDailyRec(key) {
+    try {
+      var r = JSON.parse(localStorage.getItem(key));
+      return (r && typeof r.time === 'number') ? r : null;
+    } catch (e) { return null; }
+  }
   /* История пройденных вызовов дня: один лучший результат на дату */
   function getDailyHistory() {
     try { return JSON.parse(localStorage.getItem('los_daily_history')) || []; }
@@ -1382,8 +1392,10 @@
     var color = targetColor();
     var range = PRESSES[mode][state.diff][n];
     if (state.daily) {
-      // вызов дня: фиксированные параметры, доска от даты
+      // вызов дня: фиксированные параметры, доска от даты; цель всегда белая —
+      // иначе доска решаема к белым, а победа требует чёрных (нерешаемо)
       n = 5; mode = 'rays'; color = L.WHITE;
+      state.target = 'white';
       range = [6, 6];
       rng = mulberry32(dailySeed());
     }
@@ -1422,6 +1434,7 @@
     state.locked = false;
     state.paused = false;
     state.usedUndo = false;
+    marathonAgain = false;
     pauseBtn.textContent = '⏸ Пауза';
     els.time.textContent = '0:00';
     updateIncense();
@@ -1442,8 +1455,8 @@
     els.diffLabel.parentElement.style.display = state.daily ? 'none' : '';
     renderCampStrip();
     if (state.daily) {
-      var rec = localStorage.getItem(dailyKey());
-      els.best.textContent = rec ? fmtTime(JSON.parse(rec).time) : '—';
+      var rec = readDailyRec(dailyKey());
+      els.best.textContent = rec ? fmtTime(rec.time) : '—';
     } else {
       renderBest();
     }
@@ -1465,6 +1478,7 @@
         history: state.history.slice(-30), elapsed: currentElapsed(),
         blocks: state.blocks, moveLimit: state.moveLimit,
         daily: state.daily, dailyDate: state.daily ? dailyKey() : null,
+        usedUndo: state.usedUndo,   // иначе отмена «забывается» и звёзды завышаются
         marathon: state.marathon   // чекпоинт марафона переживает закрытие вкладки
       }));
     } catch (e) {}
@@ -1479,14 +1493,21 @@
     if (!s || !s.board || s.board.length !== s.n * s.n) return false;
     // вызов дня вчерашний — доска обновилась, сессию выбрасываем
     if (s.daily && s.dailyDate !== dailyKey()) { clearSession(); return false; }
+    // валидация: битая сессия не должна ронять игру
+    if (ALL_LEVELS.indexOf(s.n) < 0) return false;
+    if (!PRESSES[s.mode]) s.mode = 'rays';
+    if (DIFFS.indexOf(s.diff) < 0) s.diff = 'easy';
+    s.target = s.target === 'black' ? 'black' : 'white';
+    if (!Array.isArray(s.history)) s.history = [];
+    if (!Array.isArray(s.blocks)) s.blocks = [];
     state.n = s.n; state.mode = s.mode; state.diff = s.diff; state.target = s.target;
     state.board = s.board; state.startBoard = s.start || s.board.slice();
-    state.moves = s.moves || 0; state.history = s.history || [];
+    state.moves = s.moves || 0; state.history = s.history;
     state.elapsed = s.elapsed || 0; state.daily = !!s.daily;
-    state.blocks = s.blocks || [];
+    state.blocks = s.blocks;
     state.moveLimit = s.moveLimit || 0;
     state.marathon = s.marathon || null;
-    state.usedUndo = false;
+    state.usedUndo = !!s.usedUndo;
     state.locked = false; state.paused = false;
     pauseBtn.textContent = '⏸ Пауза';
     els.time.textContent = fmtTime(state.elapsed);
@@ -1495,9 +1516,12 @@
       ? 'Переверни все белые камни чёрной стороной вверх'
       : 'Переверни все чёрные камни белой стороной вверх';
     renderLevels(); paintGrid(); render(); syncMenu(); updateIncense(); renderCampStrip();
+    // в вызове дня сложность не выбирается — скрываем и после восстановления сессии
+    els.diffLabel.textContent = state.daily ? '' : (DIFF_NAMES[state.diff] || '—');
+    els.diffLabel.parentElement.style.display = state.daily ? 'none' : '';
     if (state.daily) {
-      var rec = localStorage.getItem(dailyKey());
-      els.best.textContent = rec ? fmtTime(JSON.parse(rec).time) : '—';
+      var rec = readDailyRec(dailyKey());
+      els.best.textContent = rec ? fmtTime(rec.time) : '—';
     } else {
       renderBest();
     }
@@ -1509,6 +1533,8 @@
 
   function onPress(r, c) {
     if (state.locked || state.paused) return;
+    // препятствие не нажимается: ход не тратится, лимит вызова дня не сгорает
+    if (state.blocks.indexOf(r * state.n + c) >= 0) return;
     if (state.moves === 0 && !state.startedAt) startTimer();
     state.history.push(state.board.slice());
     state.board = L.applyPress(state.board, state.n, r, c, state.mode, state.blocks);
@@ -1558,6 +1584,7 @@
 
   /* ---------- Победа ---------- */
   var lastWin = null;
+  var marathonAgain = false;   // финиш марафона: «Следующий уровень» = «Ещё марафон»
   function onWin() {
     state.locked = true;
     stopTimer();
@@ -1568,8 +1595,7 @@
     if (state.daily) {
       // вызов дня: записываем лучший результат сегодня, не трогая обычную статистику
       var key = dailyKey();
-      var prev = localStorage.getItem(key);
-      var prevRec = prev ? JSON.parse(prev) : null;
+      var prevRec = readDailyRec(key);
       var isRecord = !prevRec || state.elapsed < prevRec.time;
       if (isRecord) localStorage.setItem(key, JSON.stringify({ time: state.elapsed, moves: state.moves }));
       recordDailyHistory(isRecord ? state.elapsed : prevRec.time, isRecord ? state.moves : prevRec.moves);
@@ -1627,10 +1653,12 @@
       state.marathon.moves += state.moves;
       if (state.marathon.idx < LEVELS.length - 1) {
         state.marathon.idx++;
-        saveSession();   // чекпоинт между досками
         toast('Марафон · доска ' + (state.marathon.idx + 1) + ' из ' + LEVELS.length + ' · ' + fmtTime(state.marathon.total));
         state.n = LEVELS[state.marathon.idx];
         newGame();
+        // чекпоинт между досками — ПОСЛЕ newGame: saveSession не пишет locked-партию,
+        // а newGame только что снял locked и подготовил новую доску
+        saveSession();
         return;
       }
       var m = state.marathon;
@@ -1648,6 +1676,7 @@
       els.winSuggest.textContent = 'Победы засчитаны в кампанию';
       els.winSuggest.hidden = false;
       document.getElementById('nextBtn').textContent = 'Ещё марафон';
+      marathonAgain = true;   // nextBtn перезапустит марафон, а не свободную игру
       renderBest();
       setTimeout(function () { els.win.classList.add('show'); }, 450);
       return;
@@ -1844,7 +1873,8 @@
     document.body.classList.remove('paused');
     pauseBtn.textContent = '⏸ Пауза';
     els.pause.classList.remove('show');
-    if (state.moves > 0) startTimer(); // таймер продолжает с накопленного времени
+    if (state.moves > 0 || state.elapsed > 0) startTimer(); // таймер продолжает с накопленного времени
+                                                              // (elapsed>0 — ходы могли быть отменены до нуля)
   }
 
   /* ---------- Меню ---------- */
@@ -1896,6 +1926,15 @@
   });
   document.getElementById('shareBtn').addEventListener('click', shareResult);
   document.getElementById('nextBtn').addEventListener('click', function () {
+    if (marathonAgain) {   // финиш марафона — главная кнопка запускает новый марафон
+      marathonAgain = false;
+      state.daily = false;
+      state.marathon = { idx: 0, total: 0, moves: 0 };
+      state.n = LEVELS[0];
+      toast('Марафон: 3 доски подряд без выхода. Удачи!');
+      newGame();
+      return;
+    }
     state.daily = false;
     var pos = campaignPos(state.mode);
     var prevTier = DIFFS.indexOf(state.diff);
@@ -1941,7 +1980,10 @@
   });
   document.getElementById('closeMenuBtn').addEventListener('click', function () {
     els.menu.classList.remove('show');
-    if (menuPausedByOpen && state.paused && !state.locked) resumeGame();
+    if (state.paused && !state.locked) {
+      if (menuPausedByOpen) resumeGame();
+      else els.pause.classList.add('show');   // пауза стояла до меню — вернуть её окно, а не «зависшую» доску
+    }
     menuPausedByOpen = false;
     // уходим из приложения: window.close() срабатывает в PWA и вкладках «с историей»;
     // если браузер не пускает — оставляем понятную подсказку
@@ -2022,6 +2064,8 @@
     state.marathon = null;
     els.pause.classList.remove('show');
     state.paused = false;
+    document.body.classList.remove('paused');   // иначе дымок и уголёк остаются «в паузе»
+    pauseBtn.textContent = '⏸ Пауза';
     document.getElementById('endMarathonBtn').hidden = true;
     newGame();
     toast('Марафон завершён досрочно');
@@ -2105,12 +2149,16 @@
     els.stats.classList.remove('show');
   });
   document.getElementById('resetStatsBtn').addEventListener('click', function () {
-    if (!confirm('Сбросить все рекорды и список побед?')) return;
-    Object.keys(localStorage).forEach(function (k) {
-      if (k.indexOf('los_best_') === 0) localStorage.removeItem(k);
+    if (!confirm('Сбросить все рекорды и списки побед?')) return;
+    ['los_best_', 'los_stars_', 'los_week_', 'los_marathon_', 'los_daily_'].forEach(function (prefix) {
+      Object.keys(localStorage).forEach(function (k) {
+        if (k.indexOf(prefix) === 0) localStorage.removeItem(k);
+      });
     });
     localStorage.removeItem('los_wins');
-    renderStats(); renderBest();
+    localStorage.removeItem('los_daily_history');
+    localStorage.removeItem('los_streak');
+    renderStats(); renderBest(); renderLevels(); updateDailyBtn();
   });
   [els.win, els.stats, els.pause, els.menu, els.settings, els.levels, els.limit].forEach(function (ov) {
     ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('show'); });

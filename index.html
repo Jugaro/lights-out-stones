@@ -31,7 +31,7 @@
     --stone-white-2: #d9d4c8;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body { height: 100%; }
+  html, body { height: 100%; overflow-x: hidden; }   /* узкие экраны не скроллятся горизонтально */
   body {
     font-family: Georgia, 'Times New Roman', serif;
     background:
@@ -91,7 +91,7 @@
     color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
     cursor: pointer; transition: background 0.15s, transform 0.1s;
   }
-  .btn:hover { background: #fffaf0; }
+  @media (hover: hover) { .btn:hover { background: #fffaf0; } }   /* без «липкого» hover на тач-экранах */
   .btn:active { transform: scale(0.96); }
   .btn:disabled { opacity: 0.4; cursor: default; }
   .btn.small { font-size: 12.5px; padding: 5px 10px; }
@@ -100,6 +100,7 @@
   .stats {
     display: flex; gap: 18px; font-size: 15px; margin: 4px 0 12px;
     font-variant-numeric: tabular-nums;
+    flex-wrap: wrap; justify-content: center; row-gap: 6px;   /* на узких экранах колонки переносятся, а не растягивают страницу */
   }
   .stats b { font-weight: normal; opacity: 0.65; font-size: 12px; display: block; text-align: center; letter-spacing: 0.1em; }
   .stats span { display: block; text-align: center; font-size: 18px; }
@@ -267,7 +268,7 @@
     background: rgba(50, 32, 14, 0.55);
     backdrop-filter: blur(3px);
     display: none; align-items: center; justify-content: center;
-    z-index: 10; padding: 20px;
+    z-index: 45; padding: 20px;   /* выше значка музыки (40), ниже тоста (60) */
   }
   .overlay.show { display: flex; }
   /* Пауза — чёрное затемнение вместо тёплого */
@@ -338,13 +339,21 @@
     opacity: 0.7; margin: 14px 0 2px;
   }
   .diff-title:first-child { margin-top: 4px; }
-  /* ---------- Узкий экран: в меню подпись строкой выше, кнопки тянутся ---------- */
+  /* ---------- Узкий экран ---------- */
   @media (max-width: 480px) {
     .menu-row { flex-direction: column; align-items: stretch; gap: 6px; margin: 12px 0; }
     .menu-label { text-align: left; }
     .seg button { flex: 1; padding: 8px 6px; font-size: 13.5px; }
     table.wins { font-size: 12px; }
     table.wins th, table.wins td { padding: 4px 3px; }
+    h1 { letter-spacing: 0.04em; font-size: 20px; }
+    .controls { flex-wrap: wrap; gap: 8px; }
+    .stats { gap: 8px; font-size: 12.5px; }
+    .stats span { font-size: 16px; }
+    .camp-strip { flex-wrap: wrap; justify-content: center; row-gap: 2px; padding: 4px 6px; gap: 6px; }
+    .incense-wrap { display: none; }   /* на телефоне палочка съедает ширину рядом с доской */
+    .rule-hint { letter-spacing: 0.03em; }
+    .board { width: min(86vw, 420px); }
   }
   /* ---------- Горизонтальная ориентация: ужимаем, чтобы всё поле влезло без скролла ---------- */
   @media (orientation: landscape) and (max-height: 560px) {
@@ -373,7 +382,7 @@
   .lvl-cell:not(.locked):active { background: rgba(255, 250, 238, 0.9); }
   /* Тост-поздравление */
   .toast {
-    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%) translateY(8px);
+    position: fixed; left: 50%; bottom: calc(26px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%) translateY(8px);
     background: var(--ink); color: #fff8ea; padding: 10px 18px; border-radius: 12px;
     font-size: 15px; letter-spacing: 0.03em; opacity: 0; pointer-events: none;
     transition: opacity 0.25s, transform 0.25s; z-index: 60;
@@ -385,7 +394,8 @@
   .win-suggest { margin-top: 6px; font-style: italic; opacity: 0.85; }
   /* Значок музыки в углу: вкл/выкл без похода в настройки */
   .music-toggle {
-    position: fixed; right: 14px; bottom: 14px; z-index: 40;
+    position: fixed; right: calc(14px + env(safe-area-inset-right, 0px));
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 40;
     width: 46px; height: 46px; border-radius: 50%;
     border: 1px solid rgba(60, 45, 20, 0.25);
     background: rgba(255, 253, 247, 0.92);
@@ -638,6 +648,31 @@
 
 <script src="game.js"></script>
 <script>
+  /* Безопасное хранилище: в приватном режиме Firefox/Safari и в WebView с запретом
+     кук localStorage бросает SecurityError — иначе игра падает на старте. Подменяем
+     in-memory (рекорды просто не переживут перезаход), setItem глушим квоты. */
+  var store = (function () {
+    try {
+      var probe = '__los_probe__';
+      localStorage.setItem(probe, '1'); localStorage.removeItem(probe);   // сырая проба доступности, не через store
+      var backend = localStorage;
+      return {
+        getItem: function (k) { return backend.getItem(k); },
+        setItem: function (k, v) { try { backend.setItem(k, v); } catch (e) {} },
+        removeItem: function (k) { try { backend.removeItem(k); } catch (e) {} },
+        keys: function () { return Object.keys(backend); }
+      };
+    } catch (e) {
+      var mem = {};
+      return {
+        getItem: function (k) { return Object.prototype.hasOwnProperty.call(mem, k) ? mem[k] : null; },
+        setItem: function (k, v) { mem[k] = String(v); },
+        removeItem: function (k) { delete mem[k]; },
+        keys: function () { return Object.keys(mem); }
+      };
+    }
+  })();
+
 (function () {
   'use strict';
   var L = window.LightsOutLogic;
@@ -683,7 +718,7 @@
   var TIER_TOAST = { medium: 'Доступны уровни средней трудности!', hard: 'Доступны уровни высокой трудности!' };
   var campaignDone = {};
   (function loadCampaign() {
-    var raw = localStorage.getItem('los_campaign_done');
+    var raw = store.getItem('los_campaign_done');
     if (raw) { try { campaignDone = JSON.parse(raw) || {}; } catch (e) {} }
     var changed = false;
     // миграция: ключи старого формата «3_easy» без префикса режима — это кампания «Лучи»
@@ -697,7 +732,7 @@
     // миграция: ранее открытые размеры и существующие рекорды считаем пройденными.
     // Проверка идемпотентна — выполняется при каждом запуске, чтобы ветераны,
     // у кого los_campaign_done уже записан частично, тоже получили засчитанную кампанию.
-    var oldUnlocked = Number(localStorage.getItem('los_unlocked')) || 3;
+    var oldUnlocked = Number(store.getItem('los_unlocked')) || 3;
     if (oldUnlocked >= 5 && !campaignDone['rays_3_easy']) { campaignDone['rays_3_easy'] = 1; changed = true; }
     if (oldUnlocked >= 7) {
       // ветераны со старым полным доступом прошли прежнюю прогрессию целиком —
@@ -713,7 +748,7 @@
         if (campaignDone[key]) return;
         for (var ti = 0; ti < 2; ti++) {
           var t = ['white', 'black'][ti];
-          if (localStorage.getItem('los_best_' + c.n + '_' + m + '_' + c.d + '_' + t) !== null) {
+          if (store.getItem('los_best_' + c.n + '_' + m + '_' + c.d + '_' + t) !== null) {
             campaignDone[key] = 1;
             changed = true;
             break;
@@ -721,9 +756,9 @@
         }
       });
     });
-    if (changed || !raw) localStorage.setItem('los_campaign_done', JSON.stringify(campaignDone));
+    if (changed || !raw) store.setItem('los_campaign_done', JSON.stringify(campaignDone));
   })();
-  function saveCampaign() { localStorage.setItem('los_campaign_done', JSON.stringify(campaignDone)); }
+  function saveCampaign() { store.setItem('los_campaign_done', JSON.stringify(campaignDone)); }
   function campaignPos(mode) {
     for (var i = 0; i < CAMPAIGN.length; i++) {
       if (!campaignDone[(mode || state.mode) + '_' + CAMPAIGN[i].n + '_' + CAMPAIGN[i].d]) return CAMPAIGN[i];
@@ -746,7 +781,7 @@
   var PAR = { 3: { easy: 3, medium: 5, hard: 7 }, 5: { easy: 5, medium: 8, hard: 11 }, 7: { easy: 8, medium: 12, hard: 16 }, 9: { easy: 12, medium: 18, hard: 24 } };
   function parFor(n, d) { return (PAR[n] && PAR[n][d]) || 0; }
   function starsKey(m, n, d) { return 'los_stars_' + m + '_' + n + '_' + d; }
-  function getStars(m, n, d) { return Number(localStorage.getItem(starsKey(m, n, d))) || 0; }
+  function getStars(m, n, d) { return Number(store.getItem(starsKey(m, n, d))) || 0; }
   function calcStars() {
     var par = parFor(state.n, state.diff);
     if (!state.usedUndo && par && state.moves <= par) return 3;
@@ -759,9 +794,9 @@
    * победы на этих досках с включёнными препятствиями (los_shadow_done). */
   var shadowDone = {};
   (function loadShadow() {
-    try { shadowDone = JSON.parse(localStorage.getItem('los_shadow_done')) || {}; } catch (e) { shadowDone = {}; }
+    try { shadowDone = JSON.parse(store.getItem('los_shadow_done')) || {}; } catch (e) { shadowDone = {}; }
   })();
-  function saveShadow() { localStorage.setItem('los_shadow_done', JSON.stringify(shadowDone)); }
+  function saveShadow() { store.setItem('los_shadow_done', JSON.stringify(shadowDone)); }
   function shadowCount(mode) {
     var c = 0;
     CAMPAIGN.forEach(function (x) { if (shadowDone[mode + '_' + x.n + '_' + x.d]) c++; });
@@ -799,28 +834,28 @@
       return '<i class="' + (isDone ? 'done' : '') + (isNext ? ' next' : '') + '"></i>';
     }).join('');
     var par = parFor(state.n, state.diff);
-    document.getElementById('campNorm').textContent = par ? ('норма: ' + par + ' ходов') : '';
+    document.getElementById('campNorm').textContent = par ? ('норма: ' + pluralMoves(par)) : '';
   }
 
-  var initialMode = ['cross', 'diagonals'].indexOf(localStorage.getItem('los_mode')) >= 0 ? localStorage.getItem('los_mode') : 'rays';
+  var initialMode = ['cross', 'diagonals'].indexOf(store.getItem('los_mode')) >= 0 ? store.getItem('los_mode') : 'rays';
   var state = {
     n: 5,
     mode: initialMode,
-    diff: DIFFS.indexOf(localStorage.getItem('los_diff')) >= 0 ? localStorage.getItem('los_diff') : 'medium',
-    target: localStorage.getItem('los_target') === 'black' ? 'black' : 'white',
-    sound: localStorage.getItem('los_sound') !== 'off',
+    diff: DIFFS.indexOf(store.getItem('los_diff')) >= 0 ? store.getItem('los_diff') : 'medium',
+    target: store.getItem('los_target') === 'black' ? 'black' : 'white',
+    sound: store.getItem('los_sound') !== 'off',
     music: (function () {
       // миграция старого формата: 'on' → 'zen', иначе — выбранная дорожка или тишина
-      var m = localStorage.getItem('los_music');
+      var m = store.getItem('los_music');
       if (m === 'on') return 'zen';
       if (m === 'off') return 'off';   // явный выбор «выкл» у существующих сохраняем
       if (m === null) return 'fire';   // по умолчанию — треск камина
       return ['zen', 'fire', 'rain'].indexOf(m) >= 0 ? m : 'fire';
     })(),
-    hint: localStorage.getItem('los_hint') !== 'off',
-    vibro: localStorage.getItem('los_vibro') !== 'off',
-    rocks: localStorage.getItem('los_rocks') === 'on',
-    volume: Math.min(1, Math.max(0, Number(localStorage.getItem('los_volume')) || 0.8)),
+    hint: store.getItem('los_hint') !== 'off',
+    vibro: store.getItem('los_vibro') !== 'off',
+    rocks: store.getItem('los_rocks') === 'on',
+    volume: Math.min(1, Math.max(0, Number(store.getItem('los_volume')) || 0.8)),
     unlocked: campaignPos(initialMode) === null ? 9 : campaignUnlocked(initialMode),
     board: [],
     startBoard: null,
@@ -882,12 +917,12 @@
     return 'los_best_' + n + '_' + state.mode + '_' + state.diff + '_' + state.target;
   }
   function getBest(n) {
-    var v = localStorage.getItem(bestKey(n));
+    var v = store.getItem(bestKey(n));
     return v === null ? null : Number(v);
   }
   function getWins() {
     try {
-      var w = JSON.parse(localStorage.getItem('los_wins') || '[]');
+      var w = JSON.parse(store.getItem('los_wins') || '[]');
       return Array.isArray(w) ? w : [];   // валидный JSON, но не массив — считаем список пустым
     }
     catch (e) { return []; }
@@ -895,7 +930,7 @@
   function addWin(entry) {
     var wins = getWins();
     wins.unshift(entry);
-    localStorage.setItem('los_wins', JSON.stringify(wins.slice(0, 200)));
+    store.setItem('los_wins', JSON.stringify(wins.slice(0, 200)));
   }
 
   /* ---------- Звук (Web Audio, без файлов) ---------- */
@@ -984,7 +1019,7 @@
    */
   var MUSIC_FILES = { zen: 'music-theme.mp3', fire: 'music-fire.mp3', rain: 'music-rain.mp3' };
   var music = { on: false, bus: null, bufs: {}, src: null, track: null };
-  var musicMuted = localStorage.getItem('los_music_muted') === '1';
+  var musicMuted = store.getItem('los_music_muted') === '1';
   function updateMusicToggle() {
     els.musicToggle.hidden = state.music === 'off';   // музыка выключена в настройках — значка нет
     els.musicToggle.textContent = musicMuted ? '🔇' : '🔊';
@@ -1097,7 +1132,7 @@
     state.marathon = null;   // выбор доски вручную — выход из марафона
     state.n = n;
     state.diff = d;
-    localStorage.setItem('los_diff', d);
+    store.setItem('los_diff', d);
     els.levels.classList.remove('show');
     els.menu.classList.remove('show');
     syncMenu();
@@ -1128,7 +1163,7 @@
     els.win.classList.remove('show');
     state.daily = false;
     state.mode = m;
-    localStorage.setItem('los_mode', m);
+    store.setItem('los_mode', m);
     var pos = campaignPos(m);
     if (pos) { state.n = pos.n; state.diff = pos.d; }
     state.unlocked = pos ? campaignUnlocked(m) : 9;
@@ -1176,8 +1211,24 @@
 
   /* ---------- Таймер ---------- */
   function fmtTime(sec) {
-    var m = Math.floor(sec / 60), s = sec % 60;
-    return m + ':' + (s < 10 ? '0' : '') + s;
+    sec = Math.max(0, Math.floor(sec || 0));
+    var h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), s = sec % 60;
+    return h > 0
+      ? h + ':' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s
+      : m + ':' + (s < 10 ? '0' : '') + s;
+  }
+  /* Склонение: 1 ход · 2–4 хода · 5 ходов */
+  /* Экранирование текстов из хранилища перед вставкой в innerHTML */
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
+  function pluralMoves(n) {
+    var m = n % 10, h = n % 100;
+    if (m === 1 && h !== 11) return n + ' ход';
+    if (m >= 2 && m <= 4 && (h < 10 || h >= 20)) return n + ' хода';
+    return n + ' ходов';
   }
   function startTimer() {
     if (state.timerId) return;
@@ -1296,13 +1347,13 @@
   /* Безопасное чтение записи дня: битый JSON не должен ронять игру */
   function readDailyRec(key) {
     try {
-      var r = JSON.parse(localStorage.getItem(key));
+      var r = JSON.parse(store.getItem(key));
       return (r && typeof r.time === 'number') ? r : null;
     } catch (e) { return null; }
   }
   /* История пройденных вызовов дня: один лучший результат на дату */
   function getDailyHistory() {
-    try { return JSON.parse(localStorage.getItem('los_daily_history')) || []; }
+    try { return JSON.parse(store.getItem('los_daily_history')) || []; }
     catch (e) { return []; }
   }
   function recordDailyHistory(time, moves) {
@@ -1311,7 +1362,7 @@
     list.push({ date: date, time: time, moves: moves });
     list.sort(function (a, b) { return b.date < a.date ? -1 : 1; });   // новые сверху
     if (list.length > 100) list.length = 100;
-    localStorage.setItem('los_daily_history', JSON.stringify(list));
+    store.setItem('los_daily_history', JSON.stringify(list));
   }
   /* ---------- Серия дней: пройденные вызова подряд, огоньки растут ---------- */
   function dayStr(offset) {
@@ -1320,7 +1371,7 @@
     return d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
   }
   function getStreak() {
-    try { return JSON.parse(localStorage.getItem('los_streak')) || { last: null, count: 0 }; }
+    try { return JSON.parse(store.getItem('los_streak')) || { last: null, count: 0 }; }
     catch (e) { return { last: null, count: 0 }; }
   }
   function bumpStreak() {
@@ -1328,7 +1379,7 @@
     if (s.last === dayStr()) return s.count;   // сегодня уже засчитано
     s.count = (s.last === dayStr(1)) ? s.count + 1 : 1;
     s.last = dayStr();
-    localStorage.setItem('los_streak', JSON.stringify(s));
+    store.setItem('los_streak', JSON.stringify(s));
     return s.count;
   }
   function streakFlames(count) {
@@ -1356,7 +1407,7 @@
   }
   var dailyBtn = document.getElementById('dailyBtn');
   function updateDailyBtn() {
-    var rec = localStorage.getItem(dailyKey());
+    var rec = store.getItem(dailyKey());
     // серия дней словами — огонёк без пояснения читается как «популярно»
     var s = getStreak();
     var stTxt = (s.count > 1 && s.last === dayStr()) ? (' · серия ' + s.count + ' дн.') : '';
@@ -1472,7 +1523,7 @@
   function saveSession() {
     if (state.locked) return;   // завершённую партию не сохраняем
     try {
-      localStorage.setItem('los_session', JSON.stringify({
+      store.setItem('los_session', JSON.stringify({
         n: state.n, mode: state.mode, diff: state.diff, target: state.target,
         board: state.board, start: state.startBoard, moves: state.moves,
         history: state.history.slice(-30), elapsed: currentElapsed(),
@@ -1484,11 +1535,11 @@
     } catch (e) {}
   }
   function clearSession() {
-    localStorage.removeItem('los_session');
+    store.removeItem('los_session');
   }
   function restoreSession() {
     var s;
-    try { s = JSON.parse(localStorage.getItem('los_session')); }
+    try { s = JSON.parse(store.getItem('los_session')); }
     catch (e) { s = null; }
     if (!s || !s.board || s.board.length !== s.n * s.n) return false;
     // вызов дня вчерашний — доска обновилась, сессию выбрасываем
@@ -1597,13 +1648,13 @@
       var key = dailyKey();
       var prevRec = readDailyRec(key);
       var isRecord = !prevRec || state.elapsed < prevRec.time;
-      if (isRecord) localStorage.setItem(key, JSON.stringify({ time: state.elapsed, moves: state.moves }));
+      if (isRecord) store.setItem(key, JSON.stringify({ time: state.elapsed, moves: state.moves }));
       recordDailyHistory(isRecord ? state.elapsed : prevRec.time, isRecord ? state.moves : prevRec.moves);
       lastWin = { daily: true, n: state.n, time: state.elapsed, moves: state.moves, start: state.startBoard };
       updateDailyBtn();
       els.winZen.textContent = 'вызов дня пройден';
       els.winDetails.textContent = 'Вызов дня · ' +
-        fmtTime(state.elapsed) + ' · ' + state.moves + ' ходов';
+        fmtTime(state.elapsed) + ' · ' + pluralMoves(state.moves);
       els.winRecord.textContent = isRecord
         ? (prevRec ? '✦ Лучше вчерашнего: ' + fmtTime(prevRec.time) + ' ✦' : '✦ Первое прохождение сегодня! ✦')
         : 'Сегодня лучше: ' + fmtTime(prevRec.time);
@@ -1621,19 +1672,19 @@
     document.getElementById('againBtn').textContent = 'Играть снова';
     var prev = getBest(n);
     var isRecord = prev === null || state.elapsed < prev;
-    if (isRecord) localStorage.setItem(bestKey(n), String(state.elapsed));
+    if (isRecord) store.setItem(bestKey(n), String(state.elapsed));
     addWin({ date: new Date().toISOString().slice(0, 10), level: n, mode: state.mode, diff: state.diff, target: state.target, time: state.elapsed, moves: state.moves });
     lastWin = { daily: false, n: n, mode: state.mode, diff: state.diff, time: state.elapsed, moves: state.moves };
     // звёзды: 3★ — без отмены в пределах нормы, 2★ — вдвое больше нормы, 1★ — победа
     var stars = calcStars();
     if (stars > getStars(state.mode, n, state.diff)) {
-      localStorage.setItem(starsKey(state.mode, n, state.diff), String(stars));
+      store.setItem(starsKey(state.mode, n, state.diff), String(stars));
     }
     // недельная лестница: лучшее время текущей недели
     var wkKey = weekBestKey(state.mode, n, state.diff, state.target);
-    var wkPrev = localStorage.getItem(wkKey);
+    var wkPrev = store.getItem(wkKey);
     var weekRecord = wkPrev === null || state.elapsed < Number(wkPrev);
-    if (weekRecord) localStorage.setItem(wkKey, String(state.elapsed));
+    if (weekRecord) store.setItem(wkKey, String(state.elapsed));
     // прошли комбинацию кампании своего режима — открываем следующую
     var prevPos = campaignPos(state.mode);
     campaignDone[state.mode + '_' + n + '_' + state.diff] = 1;
@@ -1664,12 +1715,12 @@
       var m = state.marathon;
       state.marathon = null;
       var mk = 'los_marathon_' + state.mode + '_' + state.diff;
-      var mPrev = localStorage.getItem(mk);
+      var mPrev = store.getItem(mk);
       var mRecord = mPrev === null || m.total < Number(mPrev);
-      if (mRecord) localStorage.setItem(mk, String(m.total));
+      if (mRecord) store.setItem(mk, String(m.total));
       els.winZen.textContent = 'марафон завершён';
       els.winDetails.textContent = 'Марафон · ' + LEVELS.length + ' доски · итого ' +
-        fmtTime(m.total) + ' · ' + m.moves + ' ходов';
+        fmtTime(m.total) + ' · ' + pluralMoves(m.moves);
       els.winRecord.textContent = mRecord ? '✦ Лучший марафон! ✦' : 'Лучший марафон: ' + fmtTime(Number(mPrev));
       els.winBonus.hidden = true;
       els.winBonus.textContent = '';
@@ -1685,7 +1736,7 @@
       ? 'все камни обратились тени'
       : 'все камни обратились свету';
     els.winDetails.textContent = 'Уровень ' + n + '×' + n + ' · ' +
-      fmtTime(state.elapsed) + ' · ' + state.moves + ' ходов · ' + starString(stars);
+      fmtTime(state.elapsed) + ' · ' + pluralMoves(state.moves) + ' · ' + starString(stars);
     els.winRecord.textContent = isRecord ? '✦ Новый рекорд! ✦' : 'Рекорд: ' + fmtTime(prev);
     document.getElementById('nextBtn').textContent = campaignPos(state.mode) ? 'Следующий уровень' : 'Свободная игра';
     // поздравление о следующем круге сложности (финал — отдельным окном выбора пути)
@@ -1701,8 +1752,8 @@
     // разовая подсказка про звёзды + отметка лучшего времени недели
     var suggest = [];
     if (weekRecord) suggest.push('✦ Лучшее время недели! ✦');
-    if (!localStorage.getItem('los_stars_hint')) {
-      localStorage.setItem('los_stars_hint', '1');
+    if (!store.getItem('los_stars_hint')) {
+      store.setItem('los_stars_hint', '1');
       suggest.push('★★★ — без отмены в пределах нормы ходов · ★★ — вдвое больше нормы');
     }
     els.winSuggest.textContent = suggest.join('  ·  ');
@@ -1710,13 +1761,13 @@
     renderBest();
     setTimeout(function () { els.win.classList.add('show'); }, 450);
     // финал кампании режима — один раз предлагаем выбрать путь дальше
-    if (campaignComplete && !localStorage.getItem('los_mode_done_' + state.mode)) {
-      localStorage.setItem('los_mode_done_' + state.mode, '1');
+    if (campaignComplete && !store.getItem('los_mode_done_' + state.mode)) {
+      store.setItem('los_mode_done_' + state.mode, '1');
       setTimeout(function () { showModeChoice(state.mode); }, 700);
     }
     // финал кампании — один раз сообщаем о теневой
-    if (campaignComplete && !localStorage.getItem('los_shadow_announced')) {
-      localStorage.setItem('los_shadow_announced', '1');
+    if (campaignComplete && !store.getItem('los_shadow_announced')) {
+      store.setItem('los_shadow_announced', '1');
       setTimeout(function () { toast('Открыта теневая кампания: пройдите доски с препятствиями'); }, 2900);
     }
   }
@@ -1740,9 +1791,10 @@
       }
     } else {
       lines.push('Lights Out Stones · Уровень ' + lastWin.n + '×' + lastWin.n + ' · ' +
-        (lastWin.mode === 'cross' ? 'Крест' : 'Лучи') + ' · ' + (DIFF_LABELS[lastWin.diff] || ''));
+        (lastWin.mode === 'cross' ? 'Крест' : (lastWin.mode === 'diagonals' ? 'Диагонали' : 'Лучи')) +
+        ' · ' + (DIFF_LABELS[lastWin.diff] || ''));
     }
-    lines.push('Победа: ' + fmtTime(lastWin.time) + ' · ' + lastWin.moves + ' ходов');
+    lines.push('Победа: ' + fmtTime(lastWin.time) + ' · ' + pluralMoves(lastWin.moves));
     lines.push('https://jugaro.github.io/lights-out-stones/');
     return lines.join('\n');
   }
@@ -1782,7 +1834,7 @@
   function winsTable(rows) {
     var body = rows.map(function (w) {
       var mode = w.mode === 'cross' ? 'крест' : (w.mode === 'rays' ? 'лучи' : (w.mode === 'diagonals' ? 'диагонали' : '—'));
-      return '<tr><td>' + w.date + '</td><td>' + w.level + '×' + w.level + '</td><td>' +
+      return '<tr><td>' + esc(w.date) + '</td><td>' + esc(w.level) + '×' + esc(w.level) + '</td><td>' +
         mode + '</td><td>' + fmtTime(w.time) + '</td><td>' + w.moves + '</td></tr>';
     }).join('');
     return '<table class="wins"><tr><th>ДАТА</th><th>УРОВЕНЬ</th><th>РЕЖИМ</th><th>ВРЕМЯ</th><th>ХОДЫ</th></tr>' +
@@ -1795,7 +1847,7 @@
     var streak = streakText();
     if (daily.length) {
       var rows = daily.map(function (r) {
-        return '<tr><td>' + r.date + '</td><td>' + fmtTime(r.time) + '</td><td>' + r.moves + '</td></tr>';
+        return '<tr><td>' + esc(r.date) + '</td><td>' + fmtTime(r.time) + '</td><td>' + esc(r.moves) + '</td></tr>';
       }).join('');
       els.dailyBody.innerHTML = '<div class="diff-title">Вызов дня' +
         (streak ? ' · серия ' + streak : '') + '</div>' +
@@ -1808,12 +1860,13 @@
     // недельная лестница: лучшие времена текущей недели (обнуляются по понедельнику)
     var wk = weekKey();
     var weekly = [];
-    for (var li = 0; li < localStorage.length; li++) {
-      var lk = localStorage.key(li);
+    var allKeys = store.keys();
+    for (var li = 0; li < allKeys.length; li++) {
+      var lk = allKeys[li];
       if (lk.indexOf('los_week_' + wk + '_') !== 0) continue;
       var parts = lk.slice(('los_week_' + wk + '_').length).split('_');   // mode_n_diff_target
       if (parts.length !== 4) continue;
-      weekly.push({ mode: parts[0], n: Number(parts[1]), d: parts[2], t: parts[3], time: Number(localStorage.getItem(lk)) });
+      weekly.push({ mode: parts[0], n: Number(parts[1]), d: parts[2], t: parts[3], time: Number(store.getItem(lk)) });
     }
     var weeklyHtml = '';
     var wShown = weekly.filter(function (x) { return statsFilter === 'all' || x.mode === statsFilter; })
@@ -2017,7 +2070,7 @@
     if (btn.dataset.mode === state.mode && !state.daily) return;
     state.daily = false;
     state.mode = btn.dataset.mode;
-    localStorage.setItem('los_mode', state.mode);
+    store.setItem('los_mode', state.mode);
     // у нового режима своя кампания: если большой размер ещё не открыт — опускаемся до доступного
     var u = campaignPos(state.mode) === null ? 9 : campaignUnlocked(state.mode);
     if (state.n > u) state.n = u;
@@ -2030,7 +2083,7 @@
     if (btn.dataset.diff === state.diff && !state.daily) return;
     state.daily = false;
     state.diff = btn.dataset.diff;
-    localStorage.setItem('los_diff', state.diff);
+    store.setItem('los_diff', state.diff);
     syncMenu();
     newGame();
   });
@@ -2039,7 +2092,7 @@
     if (btn.dataset.target === state.target && !state.daily) return;
     state.daily = false;
     state.target = btn.dataset.target;
-    localStorage.setItem('los_target', state.target);
+    store.setItem('los_target', state.target);
     syncMenu();
     newGame();
   });
@@ -2073,7 +2126,7 @@
   document.getElementById('soundSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
     state.sound = btn.dataset.sound === 'on';
-    localStorage.setItem('los_sound', state.sound ? 'on' : 'off');
+    store.setItem('los_sound', state.sound ? 'on' : 'off');
     syncMenu();
     if (state.sound) sndClick();
   });
@@ -2082,7 +2135,7 @@
     var track = btn.dataset.music;
     if (track === state.music) return;
     state.music = track;
-    localStorage.setItem('los_music', track);
+    store.setItem('los_music', track);
     syncMenu();
     updateMusicToggle();
     if (track === 'off') musicStop(); else musicStart();
@@ -2090,21 +2143,21 @@
   /* Значок музыки в углу: быстрое выкл/вкл без похода в настройки */
   els.musicToggle.addEventListener('click', function () {
     musicMuted = !musicMuted;
-    localStorage.setItem('los_music_muted', musicMuted ? '1' : '0');
+    store.setItem('los_music_muted', musicMuted ? '1' : '0');
     updateMusicToggle();
     if (musicMuted) musicStop(); else musicStart();
   });
   document.getElementById('hintSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
     state.hint = btn.dataset.hint === 'on';
-    localStorage.setItem('los_hint', state.hint ? 'on' : 'off');
+    store.setItem('los_hint', state.hint ? 'on' : 'off');
     if (!state.hint) clearHint();
     syncMenu();
   });
   document.getElementById('vibroSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
     state.vibro = btn.dataset.vibro === 'on';
-    localStorage.setItem('los_vibro', state.vibro ? 'on' : 'off');
+    store.setItem('los_vibro', state.vibro ? 'on' : 'off');
     syncMenu();
     if (state.vibro) vibro(40);   // сразу показать, что включилось
   });
@@ -2113,7 +2166,7 @@
     var btn = e.target.closest('button'); if (!btn) return;
     if ((btn.dataset.rocks === 'on') === state.rocks) return;
     state.rocks = btn.dataset.rocks === 'on';
-    localStorage.setItem('los_rocks', state.rocks ? 'on' : 'off');
+    store.setItem('los_rocks', state.rocks ? 'on' : 'off');
     syncMenu();
     newGame();
   });
@@ -2126,7 +2179,7 @@
   paintVolume();
   volumeRange.addEventListener('input', function () {
     state.volume = volumeRange.value / 100;
-    localStorage.setItem('los_volume', String(state.volume));
+    store.setItem('los_volume', String(state.volume));
     volumeRange.style.setProperty('--fill', volumeRange.value + '%');
     if (music.bus && actx) music.bus.gain.setTargetAtTime(state.volume, actx.currentTime, 0.1);
   });
@@ -2151,16 +2204,19 @@
   document.getElementById('resetStatsBtn').addEventListener('click', function () {
     if (!confirm('Сбросить все рекорды и списки побед?')) return;
     ['los_best_', 'los_stars_', 'los_week_', 'los_marathon_', 'los_daily_'].forEach(function (prefix) {
-      Object.keys(localStorage).forEach(function (k) {
-        if (k.indexOf(prefix) === 0) localStorage.removeItem(k);
+      store.keys().forEach(function (k) {
+        if (k.indexOf(prefix) === 0) store.removeItem(k);
       });
     });
-    localStorage.removeItem('los_wins');
-    localStorage.removeItem('los_daily_history');
-    localStorage.removeItem('los_streak');
+    store.removeItem('los_wins');
+    store.removeItem('los_daily_history');
+    store.removeItem('los_streak');
     renderStats(); renderBest(); renderLevels(); updateDailyBtn();
   });
-  [els.win, els.stats, els.pause, els.menu, els.settings, els.levels, els.limit].forEach(function (ov) {
+  /* Тап по фону закрывает «безопасные» окна (статистика/меню/настройки/уровни).
+     Победа, пауза и лимит — модальные: фон не закрывает, иначе остаётся залоченная
+     доска без объяснения */
+  [els.stats, els.menu, els.settings, els.levels].forEach(function (ov) {
     ov.addEventListener('click', function (e) { if (e.target === ov) ov.classList.remove('show'); });
   });
   /* Лимит ходов вызова дня */

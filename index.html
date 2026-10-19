@@ -471,6 +471,8 @@
   }
   .music-toggle:active { transform: scale(0.94); }
   .music-toggle.muted { opacity: 0.6; }
+  .music-toggle { color: #4a3319; }
+  .music-toggle svg { width: 26px; height: 26px; display: block; }
   /* В браузере значок — в потоке, под доской по центру; на телефоне — по-прежнему в углу */
   @media (min-width: 641px) {
     .music-toggle { position: static; display: block; margin: 12px auto 0; }
@@ -535,7 +537,7 @@
 </div>
 
 <div class="sound-hint" id="soundHint" hidden>🔈 коснитесь экрана — зазвучит музыка</div>
-<button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл">🔊</button>
+<button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
 
 <!-- Победа -->
 <div class="overlay" id="winOverlay">
@@ -1156,9 +1158,12 @@
   var MUSIC_FILES = { zen: 'music-theme.mp3', fire: 'music-fire.mp3', rain: 'music-rain.mp3', sakura: 'music-sakura.mp3', konnichiwa: 'music-konnichiwa.mp3' };
   var music = { on: false, bus: null, bufs: {}, src: null, track: null };
   var musicMuted = store.getItem('los_music_muted') === '1';
+  /* Значок динамика (вектор, в цветах доски): вкл — волны, выкл — крестик */
+  var SVG_SND_ON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
+  var SVG_SND_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M17 9l5 6M22 9l-5 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
   function updateMusicToggle() {
     els.musicToggle.hidden = state.music === 'off';   // музыка выключена в настройках — значка нет
-    els.musicToggle.textContent = musicMuted ? '🔇' : '🔊';
+    els.musicToggle.innerHTML = musicMuted ? SVG_SND_OFF : SVG_SND_ON;
     els.musicToggle.classList.toggle('muted', musicMuted);
   }
 

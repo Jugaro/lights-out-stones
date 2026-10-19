@@ -376,6 +376,19 @@
     text-align: center;
     line-height: 1.3;
   }
+  /* Выпадающий список в стиле кнопок */
+  select.sel {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 8px 12px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: linear-gradient(180deg, #fff8ea, #f0ddb8);
+    color: var(--ink);
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(60, 35, 10, 0.25);
+    max-width: 70vw;
+  }
   input.vol::-moz-range-thumb {
     width: 18px; height: 18px; border-radius: 50%;
     background: radial-gradient(circle at 35% 30%, #fff8ea, #e2bd7f);
@@ -619,6 +632,11 @@
   <div class="card">
     <h2>УРОВНИ</h2>
     <div class="zen" id="levelsZen"></div>
+    <div class="seg lvl-mode" id="levelsModeSeg" style="justify-content:center; margin:10px 0;">
+      <button data-mode="rays">Лучи</button>
+      <button data-mode="cross">Крест</button>
+      <button data-mode="diagonals">Диагонали</button>
+    </div>
     <div class="levels-grid" id="levelsGrid"></div>
     <div class="menu-note" id="levelsNote"></div>
     <div class="row">
@@ -671,14 +689,14 @@
     </div>
     <div class="menu-row">
       <div class="menu-label">Музыка</div>
-      <div class="seg" id="musicSeg">
-        <button data-music="off" class="active">Выкл</button>
-        <button data-music="zen">Дзен</button>
-        <button data-music="fire">Камин</button>
-        <button data-music="rain">Дождь</button>
-        <button data-music="sakura">Сакура</button>
-        <button data-music="konnichiwa">Konnichiwa</button>
-      </div>
+      <select id="musicSelect" class="sel" aria-label="Музыка">
+        <option value="off">Выкл</option>
+        <option value="zen">Дзен</option>
+        <option value="fire">Камин</option>
+        <option value="rain">Дождь</option>
+        <option value="sakura">Сакура</option>
+        <option value="konnichiwa">Konnichiwa</option>
+      </select>
       <div class="music-credit">«Сакура» — Roa Music, «Konnichiwa» — Alex-Productions · CC BY 3.0 · free-stock-music.com</div>
     </div>
     <div class="menu-row">
@@ -930,6 +948,7 @@
     daily: false,
     paused: false,
     usedUndo: false,   // для звёзд: отмена хода снижает награду
+    undoArmed: false,  // отмена доступна ровно один раз — до следующего хода
     marathon: null,    // {idx,total,moves} — режим «Марафон», null вне его
     tutStep: 0,        // туториал: 0 — выключен, 1..3 — шаг подсказки-тренера
     suggestCell: null, // индекс подсвеченного туториалом камня
@@ -1192,6 +1211,9 @@
   function renderLevels() {
     var grid = document.getElementById('levelsGrid');
     var m = state.mode;
+    document.querySelectorAll('#levelsModeSeg button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.mode === m);
+    });
     var unlocked = campaignPos(m) === null ? 9 : campaignUnlocked(m);
     var done9 = 0;
     CAMPAIGN.forEach(function (c) { if (campaignDone[m + '_' + c.n + '_' + c.d]) done9++; });
@@ -1401,7 +1423,7 @@
     }
     clearHint();
     els.moves.textContent = state.moveLimit ? (state.moves + ' / ' + state.moveLimit) : state.moves;
-    els.undo.disabled = state.history.length === 0;
+    els.undo.disabled = !state.undoArmed;
   }
 
   /* ---------- Подсветка линии хода: наведение мышью или палец на камне ---------- */
@@ -1590,6 +1612,7 @@
     state.locked = false;
     state.paused = false;
     state.usedUndo = false;
+    state.undoArmed = false;
     marathonAgain = false;
     pauseBtn.textContent = '⏸ Пауза';
     els.time.textContent = '0:00';
@@ -1648,6 +1671,7 @@
         blocks: state.blocks, moveLimit: state.moveLimit,
         daily: state.daily, dailyDate: state.daily ? dailyKey() : null,
         usedUndo: state.usedUndo,   // иначе отмена «забывается» и звёзды завышаются
+        undoArmed: state.undoArmed,   // и одноразовость отмены не обходится перезагрузкой
         marathon: state.marathon   // чекпоинт марафона переживает закрытие вкладки
       }));
     } catch (e) {}
@@ -1677,6 +1701,7 @@
     state.moveLimit = s.moveLimit || 0;
     state.marathon = s.marathon || null;
     state.usedUndo = !!s.usedUndo;
+    state.undoArmed = !!s.undoArmed;
     state.locked = false; state.paused = false;
     pauseBtn.textContent = '⏸ Пауза';
     els.time.textContent = fmtTime(state.elapsed);
@@ -1708,6 +1733,7 @@
     state.history.push(state.board.slice());
     state.board = L.applyPress(state.board, state.n, r, c, state.mode, state.blocks);
     state.moves++;
+    state.undoArmed = true;   // после каждого хода — ровно одна отмена
     els.undo.disabled = false;
     sndFlip();
     vibro(30);
@@ -1747,11 +1773,12 @@
   }
 
   function onUndo() {
-    if (state.locked || state.history.length === 0) return;
-    state.board = state.history.pop();   // откатываем только последний ход; следующий откат — после нового хода
+    if (state.locked || !state.undoArmed || state.history.length === 0) return;
+    state.board = state.history.pop();   // ровно один откат; снова отменить — только после нового хода
+    state.undoArmed = false;
     state.moves = Math.max(0, state.moves - 1);
     state.usedUndo = true;   // для звёзд: любая отмена снижает награду
-    els.undo.disabled = state.history.length === 0;
+    els.undo.disabled = true;
     sndClick();
     render();
     saveSession();
@@ -2068,9 +2095,8 @@
     document.querySelectorAll('#soundSeg button').forEach(function (b) {
       b.classList.toggle('active', (b.dataset.sound === 'on') === state.sound);
     });
-    document.querySelectorAll('#musicSeg button').forEach(function (b) {
-      b.classList.toggle('active', b.dataset.music === state.music);
-    });
+    var ms = document.getElementById('musicSelect');
+    if (ms) ms.value = state.music;
     document.querySelectorAll('#hintSeg button').forEach(function (b) {
       b.classList.toggle('active', (b.dataset.hint === 'on') === state.hint);
     });
@@ -2202,6 +2228,20 @@
     syncMenu();
     newGame();
   });
+  /* Тот же выбор режима — в окне «Новая игра» (карта уровней) */
+  document.getElementById('levelsModeSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    if (btn.dataset.mode === state.mode && !state.daily) return;
+    state.daily = false;
+    state.mode = btn.dataset.mode;
+    store.setItem('los_mode', state.mode);
+    var u = campaignPos(state.mode) === null ? 9 : campaignUnlocked(state.mode);
+    if (state.n > u) state.n = u;
+    state.unlocked = u;
+    syncMenu();
+    renderLevels();
+    newGame();
+  });
   document.getElementById('diffSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
     if (btn.dataset.diff === state.diff && !state.daily) return;
@@ -2265,9 +2305,8 @@
     syncMenu();
     if (state.sound) sndClick();
   });
-  document.getElementById('musicSeg').addEventListener('click', function (e) {
-    var btn = e.target.closest('button'); if (!btn) return;
-    var track = btn.dataset.music;
+  document.getElementById('musicSelect').addEventListener('change', function () {
+    var track = this.value;
     if (track === state.music) return;
     state.music = track;
     store.setItem('los_music', track);

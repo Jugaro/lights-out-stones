@@ -137,6 +137,35 @@
     outline: none;
   }
   .cell:focus-visible .stone { box-shadow: 0 0 0 2px #7a5; }
+  /* Туториал: пульсирующее кольцо на рекомендуемом камне */
+  .cell.suggest::after {
+    content: ''; position: absolute; inset: -3px;
+    border: 2px solid #b8860b; border-radius: 50%;
+    animation: suggestPulse 1.3s ease-out infinite;
+    pointer-events: none;
+  }
+  @keyframes suggestPulse {
+    0% { transform: scale(0.92); opacity: 0.95; }
+    70% { transform: scale(1.18); opacity: 0; }
+    100% { transform: scale(1.18); opacity: 0; }
+  }
+  /* Туториал: подсказка-тренер над доской */
+  .coach {
+    display: flex; align-items: center; gap: 10px;
+    margin: 8px auto 0; max-width: 430px; padding: 9px 14px;
+    border: 1px solid var(--line); border-radius: 12px;
+    background: rgba(255, 251, 240, 0.92);
+    font-size: 13.5px; line-height: 1.45; text-align: left;
+    box-shadow: 0 4px 14px rgba(40, 24, 8, 0.15);
+    animation: coachIn 0.4s ease;
+  }
+  .coach[hidden] { display: none; }
+  .coach button {
+    flex: none; border: none; background: transparent; cursor: pointer;
+    font-size: 15px; opacity: 0.5; padding: 2px 4px; color: var(--ink);
+  }
+  .coach button:hover { opacity: 0.9; }
+  @keyframes coachIn { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
   .stone {
     position: absolute;
     inset: 7%;
@@ -443,6 +472,11 @@
 </div>
 
 <div class="rule-hint" id="ruleHint">Переверни все чёрные камни белой стороной вверх</div>
+<!-- Туториал: подсказка-тренер для первой партии -->
+<div class="coach" id="coach" hidden>
+  <span id="coachText"></span>
+  <button type="button" id="coachSkip" aria-label="Закрыть подсказку">✕</button>
+</div>
 <div class="scene">
   <div class="board-frame">
     <div class="board" id="board"></div>
@@ -870,10 +904,52 @@
     daily: false,
     paused: false,
     usedUndo: false,   // для звёзд: отмена хода снижает награду
-    marathon: null     // {idx,total,moves} — режим «Марафон», null вне его
+    marathon: null,    // {idx,total,moves} — режим «Марафон», null вне его
+    tutStep: 0,        // туториал: 0 — выключен, 1..3 — шаг подсказки-тренера
+    suggestCell: null, // индекс подсвеченного туториалом камня
+    suggestList: [],   // кандидаты для подсветки (нечётная кратность генерации)
+    suggestIdx: 0
   };
 
   function targetColor() { return state.target === 'black' ? L.BLACK : L.WHITE; }
+
+  /* ---------- Туториал: тренер для самой первой партии ---------- */
+  /* Включается только для абсолютно нового игрока: ни побед, ни прогресса кампании */
+  function tutorialFresh() {
+    if (store.getItem('los_tutorial_done')) return false;
+    if (store.getItem('los_wins')) return false;
+    try {
+      if (Object.keys(JSON.parse(store.getItem('los_campaign_done') || '{}')).length) return false;
+    } catch (e) { /* пусто — считаем новичком */ }
+    var ks = store.keys();
+    for (var i = 0; i < ks.length; i++) if (ks[i].indexOf('los_best_') === 0) return false;
+    return true;
+  }
+  var COACH_TEXT = {
+    1: 'Первая партия! Нажмите на подсвеченный камень — перевернётся он и вся его строка со столбцом.',
+    2: 'Верно! Цель — все камни одного цвета. Нажмите следующий подсвеченный камень.',
+    3: 'Хорошо! Завершите доску — и уровень пройден.'
+  };
+  function showCoach(step) {
+    els.coachText.textContent = COACH_TEXT[step] || '';
+    els.coach.hidden = false;
+  }
+  function hideCoach() { els.coach.hidden = true; }
+  function finishTutorial() {
+    state.tutStep = 0;
+    state.suggestCell = null;
+    state.suggestList = [];
+    try { store.setItem('los_tutorial_done', '1'); } catch (e) {}
+    hideCoach();
+    render();
+  }
+  /* кандидаты на подсветку — нажатия с нечётной кратностью из генерации (гарантированное решение) */
+  function computeSuggest(rec, n) {
+    var parity = {}, out = [];
+    rec.forEach(function (p) { var k = p[0] * n + p[1]; parity[k] = !parity[k]; });
+    Object.keys(parity).forEach(function (k) { if (parity[k]) out.push(Number(k)); });
+    return out;
+  }
 
   /* Виброотклик: короткий толчок на ход, двойной на победу */
   function vibro(p) {
@@ -904,6 +980,8 @@
     levels: document.getElementById('levelsOverlay'),
     modeNote: document.getElementById('modeNote'),
     ruleHint: document.getElementById('ruleHint'),
+    coach: document.getElementById('coach'),
+    coachText: document.getElementById('coachText'),
     winZen: document.getElementById('winZen'),
     winBonus: document.getElementById('winBonus'),
     winSuggest: document.getElementById('winSuggest'),
@@ -1280,6 +1358,7 @@
           var cell = document.createElement('button');
           var isBlock = state.blocks.indexOf(idx) >= 0;
           cell.className = 'cell' + (state.board[idx] === L.BLACK ? ' black' : '') + (isBlock ? ' block' : '');
+          if (idx === state.suggestCell) cell.classList.add('suggest');
           cell.setAttribute('aria-label', 'камень ' + (r + 1) + '-' + (c + 1) + (isBlock ? ' (сердцевина)' : ''));
           if (idx === pressedIdx) {
             cell.classList.add('pressed');
@@ -1498,6 +1577,19 @@
     els.ruleHint.textContent = color === L.BLACK
       ? 'Переверни все белые камни чёрной стороной вверх'
       : 'Переверни все чёрные камни белой стороной вверх';
+    /* туториал: только для новичка и не в вызове дня */
+    if (!state.daily && tutorialFresh()) {
+      if (!state.tutStep) state.tutStep = 1;
+      state.suggestList = computeSuggest(rec, n);
+      state.suggestIdx = 0;
+      state.suggestCell = state.suggestList.length ? state.suggestList[0] : null;
+      showCoach(state.tutStep);
+    } else {
+      state.tutStep = 0;
+      state.suggestCell = null;
+      state.suggestList = [];
+      hideCoach();
+    }
     renderLevels();   // видимость сегмента размеров зависит от режима (daily/кампания)
     paintGrid();
     render();
@@ -1593,6 +1685,12 @@
     els.undo.disabled = false;
     sndFlip();
     vibro(30);
+    if (state.tutStep) {
+      if (state.tutStep < 3) { state.tutStep++; showCoach(state.tutStep); }
+      else { finishTutorial(); }
+      state.suggestIdx++;
+      state.suggestCell = state.suggestList[state.suggestIdx] !== undefined ? state.suggestList[state.suggestIdx] : null;
+    }
     render(r * state.n + c);
     saveSession();
     if (L.isWin(state.board, targetColor(), state.blocks)) { onWin(); return; }
@@ -1638,6 +1736,7 @@
   var marathonAgain = false;   // финиш марафона: «Следующий уровень» = «Ещё марафон»
   function onWin() {
     state.locked = true;
+    if (state.tutStep) finishTutorial();
     stopTimer();
     sndWin();
     vibro([60, 60, 140]);
@@ -2123,6 +2222,7 @@
     newGame();
     toast('Марафон завершён досрочно');
   });
+  document.getElementById('coachSkip').addEventListener('click', finishTutorial);
   document.getElementById('soundSeg').addEventListener('click', function (e) {
     var btn = e.target.closest('button'); if (!btn) return;
     state.sound = btn.dataset.sound === 'on';

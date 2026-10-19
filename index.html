@@ -67,7 +67,8 @@
     letter-spacing: 0.1em;
     text-align: center;
   }
-  /* Строка правил + отмена хода справа, под палец */
+  /* Строка правил + отмена хода справа, под палец (телефон).
+     В браузере — колонка: правила сверху, кнопка отмены по центру под ними. */
   .rule-row {
     display: flex;
     align-items: center;
@@ -78,6 +79,10 @@
   }
   .rule-row .rule-hint { margin: 0; }
   .rule-row #undoBtn { flex: none; padding: 8px 14px; }
+  @media (min-width: 641px) {
+    .rule-row { flex-direction: column; gap: 8px; }
+    .rule-row .rule-hint { order: -1; }
+  }
   /* ---------- Панель управления ---------- */
   .controls {
     display: flex;
@@ -632,10 +637,13 @@
   <div class="card">
     <h2>УРОВНИ</h2>
     <div class="zen" id="levelsZen"></div>
-    <div class="seg lvl-mode" id="levelsModeSeg" style="justify-content:center; margin:10px 0;">
-      <button data-mode="rays">Лучи</button>
-      <button data-mode="cross">Крест</button>
-      <button data-mode="diagonals">Диагонали</button>
+    <div class="menu-row">
+      <div class="menu-label">Режим</div>
+      <div class="seg" id="levelsModeSeg">
+        <button data-mode="rays">Лучи</button>
+        <button data-mode="cross">Крест</button>
+        <button data-mode="diagonals">Диагонали</button>
+      </div>
     </div>
     <div class="levels-grid" id="levelsGrid"></div>
     <div class="menu-note" id="levelsNote"></div>

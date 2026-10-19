@@ -1,5 +1,5 @@
 /* Service worker: полный офлайн-кэш + автообновление. Работает только по http/https. */
-const CACHE = 'lights-out-stones-v7';
+const CACHE = 'lights-out-stones-v8';
 const ASSETS = [
   './',
   './index.html',
@@ -8,6 +8,8 @@ const ASSETS = [
   './music-theme.mp3',
   './music-fire.mp3',
   './music-rain.mp3',
+  './music-sakura.mp3',
+  './music-konnichiwa.mp3',
   './icon.svg',
   './icon-180.png',
   './icon-192.png',

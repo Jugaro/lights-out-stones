@@ -473,9 +473,19 @@
   .music-toggle.muted { opacity: 0.6; }
   .music-toggle { color: #4a3319; }
   .music-toggle svg { width: 26px; height: 26px; display: block; }
-  /* В браузере значок — в потоке, под доской по центру; на телефоне — по-прежнему в углу */
+  /* В браузере значок «лежит» на полочке доски: по центру нижней кромки рамки.
+     На телефоне — по-прежнему плавающая кнопка в углу. */
   @media (min-width: 641px) {
-    .music-toggle { position: static; display: block; margin: 12px auto 0; }
+    .board-frame { position: relative; }
+    .music-toggle {
+      position: absolute;
+      left: 50%;
+      bottom: -23px;   /* центр кнопки — на кромке рамки: стоит на полочке */
+      transform: translateX(-50%);
+      display: block;
+      margin: 0;
+    }
+    .music-toggle:active { transform: translateX(-50%) scale(0.94); }
     .music-toggle[hidden] { display: none; }
   }
   /* Главное действие (крупная тёмная) и выключенные кнопки */
@@ -516,8 +526,6 @@
   <span class="norm" id="campNorm"></span>
 </div>
 
-<button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
-
 <div class="rule-row">
   <div class="rule-hint" id="ruleHint">Переверни все чёрные камни белой стороной вверх</div>
   <button class="btn small" id="undoBtn" disabled>↩ Отменить ход</button>
@@ -530,6 +538,7 @@
 <div class="scene">
   <div class="board-frame">
     <div class="board" id="board"></div>
+    <button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 9v6h4l5 4V5L8 9H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
   </div>
   <div class="incense-wrap" aria-hidden="true">
     <div class="smoke"><i></i><i></i><i></i></div>

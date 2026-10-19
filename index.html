@@ -475,19 +475,16 @@
   .music-toggle.muted { opacity: 0.6; }
   .music-toggle { color: #4a3319; }
   .music-toggle svg { width: 26px; height: 26px; display: block; }
-  /* В браузере значок — внизу по центру доски, на нижней кромке рамки.
+  /* В браузере значок — статично в колонке аромапалочки: сразу под тлеющей палочкой справа.
      На телефоне — по-прежнему плавающая кнопка в углу. */
   @media (min-width: 641px) {
-    .board-frame { position: relative; }
     .music-toggle {
-      position: absolute;
-      left: 50%;
-      bottom: -6px;   /* кнопка на нижней кромке рамки доски, по центру */
-      transform: translateX(-50%);
+      position: static;
       display: block;
-      margin: 0;
+      margin: 12px auto 0;
+      transform: none;
     }
-    .music-toggle:active { transform: translateX(-50%) scale(0.94); }
+    .music-toggle:active { transform: scale(0.94); }
     .music-toggle[hidden] { display: none; }
   }
   /* Главное действие (крупная тёмная) и выключенные кнопки */
@@ -542,12 +539,12 @@
 <div class="scene">
   <div class="board-frame">
     <div class="board" id="board"></div>
-    <button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6M18.1 6.4a8.2 8.2 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
   </div>
-  <div class="incense-wrap" aria-hidden="true">
-    <div class="smoke"><i></i><i></i><i></i></div>
-    <div class="stick" id="incenseStick"></div>
-    <div class="holder"></div>
+  <div class="incense-wrap">
+    <div class="smoke" aria-hidden="true"><i></i><i></i><i></i></div>
+    <div class="stick" id="incenseStick" aria-hidden="true"></div>
+    <div class="holder" aria-hidden="true"></div>
+    <button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6M18.1 6.4a8.2 8.2 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
   </div>
 </div>
 

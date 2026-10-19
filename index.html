@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#e6c896">
+<meta name="color-scheme" content="light">
 <title>Lights Out Stones</title>
 <meta name="description" content="Восточная головоломка: нажатие переворачивает камень и всю его строку со столбцом. Приведи доску к одному цвету — 3×3, 5×5, 7×7, вызов дня каждый день.">
 <meta property="og:type" content="website">
@@ -20,6 +21,7 @@
 <link rel="manifest" href="manifest.json">
 <style>
   :root {
+    color-scheme: light;   /* страница светлая: не даём браузеру принудительно затемнять и перекрашивать значки */
     --wood-1: #eed9ae;
     --wood-2: #e2bd7f;
     --wood-3: #d9ad6c;
@@ -461,15 +463,21 @@
   /* Бонусные строки в окне победы */
   .win-bonus { margin-top: 8px; color: #7a5a1e; font-weight: 700; letter-spacing: 0.03em; }
   .win-suggest { margin-top: 6px; font-style: italic; opacity: 0.85; }
-  /* Значок музыки в углу: вкл/выкл без похода в настройки */
+  /* Значок музыки в углу: вкл/выкл без похода в настройки.
+     Кружок — деревянный, в тон поверхности доски; значок — тёмно-коричневый (#4a3319) */
   .music-toggle {
     position: fixed; right: calc(14px + env(safe-area-inset-right, 0px));
     bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 40;
     width: 46px; height: 46px; border-radius: 50%;
-    border: 1px solid rgba(60, 45, 20, 0.25);
-    background: rgba(255, 253, 247, 0.92);
+    border: 1px solid rgba(92, 58, 28, 0.45);
+    background:
+      radial-gradient(circle at 30% 25%, rgba(255, 240, 205, 0.55), transparent 60%),
+      linear-gradient(150deg, #eccf95, #ddb271 70%, #d3a45f);
     font-size: 21px; line-height: 1; cursor: pointer;
-    box-shadow: 0 2px 10px rgba(60, 45, 20, 0.25);
+    box-shadow:
+      0 2px 10px rgba(60, 45, 20, 0.25),
+      inset 0 1px 2px rgba(255, 235, 200, 0.5),
+      inset 0 -1px 3px rgba(120, 80, 35, 0.3);
   }
   .music-toggle:active { transform: scale(0.94); }
   .music-toggle.muted { opacity: 0.6; }

@@ -1,0 +1,8 @@
+[{
+  "relation": ["delegate_permission/common.handle_all_urls"],
+  "target": {
+    "namespace": "android_app",
+    "package_name": "com.jugaro.lightsoutstones",
+    "sha256_cert_fingerprints": ["E8:5B:48:3F:DC:C8:43:C0:12:9C:54:28:6D:13:6D:6F:24:A6:C6:2E:D7:A8:84:17:15:F1:25:91:42:C9:20:D1"]
+  }
+}]

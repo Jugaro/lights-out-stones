@@ -81,8 +81,8 @@
   }
   .rule-row .rule-hint { margin: 0; }
   /* Кнопка отмены хода — под таймером (своей строкой по центру под статистикой) */
-  .undo-row { display: flex; justify-content: center; margin: -4px 0 6px; }
-  .undo-row #undoBtn { padding: 8px 14px; }
+  .undo-row { display: flex; justify-content: center; align-items: center; gap: 8px; margin: -4px 0 6px; }
+  .undo-row #undoBtn, .undo-row #replayBtn { padding: 8px 14px; }
   @media (min-width: 641px) {
     .rule-row { flex-direction: column; gap: 8px; }
     .rule-row .rule-hint { order: -1; }
@@ -125,7 +125,7 @@
   .stats b { font-weight: normal; opacity: 0.65; font-size: 12px; display: block; text-align: center; letter-spacing: 0.1em; }
   .stats span { display: block; text-align: center; font-size: 18px; }
   /* ---------- Сцена: доска + аромапалочка ---------- */
-  .scene { display: flex; align-items: center; gap: clamp(10px, 3vw, 26px); }
+  .scene { display: flex; align-items: center; justify-content: center; gap: clamp(10px, 3vw, 26px); }
   .board-frame {
     padding: clamp(10px, 2.5vw, 18px);
     border-radius: 10px;
@@ -244,6 +244,9 @@
     align-self: stretch; justify-content: flex-end; padding-bottom: 8px;
     position: relative;
   }
+  /* ВРЕМЕННО: тлеющая аромапалочка (дым, палочка, подставка) скрыта — вернём позже.
+     Код анимации и таймер тления оставлены нетронутыми. */
+  .incense-wrap { display: none; }
   .smoke {
     position: absolute; left: 50%; transform: translateX(-50%);
     /* поднимается от тлеющего кончика: низ дымки = подставка (12) + остаток палочки */
@@ -483,14 +486,15 @@
   .music-toggle.muted { opacity: 0.6; }
   .music-toggle { color: #4a3319; }
   .music-toggle svg { width: 26px; height: 26px; display: block; }
-  /* В браузере значок — статично в колонке аромапалочки: сразу под тлеющей палочкой справа.
-     На телефоне — по-прежнему плавающая кнопка в углу. */
+  /* На телефоне значок музыки — плавающая кнопка в правом нижнем углу.
+     В браузере — статично в ряду кнопок, справа от «Заново». */
   @media (min-width: 641px) {
     .music-toggle {
       position: static;
       display: block;
-      margin: 12px auto 0;
+      margin: 0;
       transform: none;
+      flex: none;
     }
     .music-toggle:active { transform: scale(0.94); }
     .music-toggle[hidden] { display: none; }
@@ -502,6 +506,7 @@
   .row-minor .btn { font-size: 13px; }
   /* Полоса прогресса кампании: «камешки» го + норма ходов — одна тонкая строка */
   .camp-strip { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 1px 0 3px; font-size: 12px; color: #6b5636; min-height: 18px; }
+  .camp-strip[hidden] { display: none; }   /* hidden проигрывал display:flex — строка видна даже в вызове дня */
   .camp-strip .cap { font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
   .camp-strip .dots { white-space: nowrap; }
   .camp-strip .dots i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; border: 1px solid #8a744d; margin: 0 2px; vertical-align: -1px; }
@@ -529,6 +534,8 @@
 </div>
 <div class="undo-row">
   <button class="btn small" id="undoBtn" disabled>↩ Отменить ход</button>
+  <button class="btn small" id="replayBtn">↻ Заново</button>
+  <button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6M18.1 6.4a8.2 8.2 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
 </div>
 <div class="camp-strip" id="campStrip" hidden>
   <span class="cap" id="campCaption"></span>
@@ -552,7 +559,6 @@
     <div class="smoke" aria-hidden="true"><i></i><i></i><i></i></div>
     <div class="stick" id="incenseStick" aria-hidden="true"></div>
     <div class="holder" aria-hidden="true"></div>
-    <button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6M18.1 6.4a8.2 8.2 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
   </div>
 </div>
 
@@ -562,7 +568,7 @@
 <div class="overlay" id="winOverlay">
   <div class="card">
     <h2>ПОБЕДА</h2>
-    <div class="zen" id="winZen">все камни обратились свету</div>
+    <div class="zen" id="winZen">все камни стали белыми — доска едина</div>
     <div class="big" id="winDetails"></div>
     <div class="record" id="winRecord"></div>
     <div class="win-bonus" id="winBonus" hidden></div>
@@ -650,7 +656,7 @@
       <button class="btn" id="menuResumeBtn" hidden>Продолжить</button>
       <button class="btn" id="dailyBtn">☀ Вызов дня</button>
       <button class="btn" id="menuNewBtn">Новая игра</button>
-      <button class="btn" id="marathonBtn">🏃 Марафон</button>
+      <button class="btn" id="marathonBtn">⚑ Марафон</button>
       <button class="btn" id="menuSettingsBtn">Настройки</button>
       <button class="btn" id="menuStatsBtn">Статистика</button>
       <button class="btn" id="closeMenuBtn">Выйти</button>
@@ -1930,8 +1936,8 @@
       return;
     }
     els.winZen.textContent = state.target === 'black'
-      ? 'все камни обратились тени'
-      : 'все камни обратились свету';
+      ? 'все камни стали чёрными — доска едина'
+      : 'все камни стали белыми — доска едина';
     els.winDetails.textContent = 'Уровень ' + n + '×' + n + ' · ' +
       fmtTime(state.elapsed) + ' · ' + pluralMoves(state.moves) + ' · ' + starString(stars);
     els.winRecord.textContent = isRecord ? '✦ Новый рекорд! ✦' : 'Рекорд: ' + fmtTime(prev);
@@ -2339,6 +2345,11 @@
     document.body.classList.remove('paused');
     pauseBtn.textContent = '⏸ Пауза';
     document.getElementById('endMarathonBtn').hidden = true;
+    newGame();
+    toast('Новая попытка');
+  });
+  /* «Заново» на главном экране: то же самое без окна паузы */
+  document.getElementById('replayBtn').addEventListener('click', function () {
     newGame();
     toast('Новая попытка');
   });

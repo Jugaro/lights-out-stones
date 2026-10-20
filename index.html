@@ -729,7 +729,6 @@
       <div class="menu-label">Музыка</div>
       <select id="musicSelect" class="sel" aria-label="Музыка">
         <option value="off">Выкл</option>
-        <option value="zen">Дзен</option>
         <option value="fire">Камин</option>
         <option value="rain">Дождь</option>
         <option value="sakura">Сакура</option>
@@ -963,12 +962,12 @@
     target: store.getItem('los_target') === 'black' ? 'black' : 'white',
     sound: store.getItem('los_sound') !== 'off',
     music: (function () {
-      // миграция старого формата: 'on' → 'zen', иначе — выбранная дорожка или тишина
+      // миграция старого формата: 'on' → камин; удалённый «Дзен» мягко сводится к камину
       var m = store.getItem('los_music');
-      if (m === 'on') return 'zen';
+      if (m === 'on') return 'fire';
       if (m === 'off') return 'off';   // явный выбор «выкл» у существующих сохраняем
       if (m === null) return 'fire';   // по умолчанию — треск камина
-      return ['zen', 'fire', 'rain', 'sakura', 'konnichiwa'].indexOf(m) >= 0 ? m : 'fire';
+      return ['fire', 'rain', 'sakura', 'konnichiwa'].indexOf(m) >= 0 ? m : 'fire';
     })(),
     hint: store.getItem('los_hint') !== 'off',
     vibro: store.getItem('los_vibro') !== 'off',
@@ -1182,11 +1181,10 @@
   }
 
   /* ---------- Музыка: готовые эмбиент-фонограммы, бесшовный цикл ----------
-   * Дзен (music-theme.mp3) содержит запечённый кроссфейд «хвост → голова» (6 с).
-   * Камин и Дождь — сгенерированные лупы без кроссфейда, поэтому перед циклом
+   * Все дорожки — лупы без запечённого кроссфейда, поэтому перед циклом
    * смешиваем хвост с головой (0,4 с), чтобы стык не щёлкал.
    */
-  var MUSIC_FILES = { zen: 'music-theme.mp3', fire: 'music-fire.mp3', rain: 'music-rain.mp3', sakura: 'music-sakura.mp3', konnichiwa: 'music-konnichiwa.mp3' };
+  var MUSIC_FILES = { fire: 'music-fire.mp3', rain: 'music-rain.mp3', sakura: 'music-sakura.mp3', konnichiwa: 'music-konnichiwa.mp3' };
   var music = { on: false, bus: null, bufs: {}, src: null, track: null };
   var musicMuted = store.getItem('los_music_muted') === '1';
   /* Значок динамика (вариант А: чёткий силуэт, вкл — волны, выкл — крестик) */
@@ -1243,7 +1241,7 @@
       .then(function (r) { return r.arrayBuffer(); })
       .then(function (ab) { return actx.decodeAudioData(ab); })
       .then(function (buf) {
-        if (track !== 'zen') buf = loopableBuffer(buf);
+        buf = loopableBuffer(buf);   // стык цикла не щёлкает
         music.bufs[track] = buf;
         // играем, только если за время загрузки дорожку не сменили/выключили
         if (music.on && music.track === track) musicPlayBuffer(buf);

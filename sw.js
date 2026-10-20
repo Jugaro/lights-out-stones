@@ -1,10 +1,11 @@
-/* Service worker: полный офлайн-кэш + автообновление. Работает только по http/https. */
-const CACHE = 'lights-out-stones-v18';
+/* Service worker: полный офлайн-кэш + автообновление. Работает только по http/https.
+   © 2026 Jugaro · Lights Out Stones · github.com/Jugaro/lights-out-stones · печать 95c439226dfd78e9 */
+const CACHE = 'lights-out-stones-v19';
 const ASSETS = [
   './',
   './index.html',
-  './game.js',
-  './solver.js',
+  './game.min.js',
+  './solver.min.js',
   './manifest.json',
   './privacy.html',
   './favicon.ico',

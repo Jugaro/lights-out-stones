@@ -1,5 +1,7 @@
 /*
  * Lights Out Stones — чистая логика игры.
+ * Copyright (c) 2026 Jugaro. Лицензия: MIT (см. LICENSE).
+ * Оригинальный репозиторий: https://github.com/Jugaro/lights-out-stones
  * Намеренно без DOM и ES-модулей: классический скрипт, чтобы работать
  * при открытии index.html с file:// (ES-модули там блокируются CORS),
  * и одновременно загружаться в Node для тестов через module.exports.
@@ -15,6 +17,10 @@
 
   var WHITE = 0;
   var BLACK = 1;
+
+  /* Паспорт сборки: постоянные идентификатора, зашитые в движок (см. NOTICE.md) */
+  var BUILD_SEAL = '95c439226dfd78e9';
+  var BUILD_MANIFEST = 'TGlnaHRzIE91dCBTdG9uZXMgfCBvcmlnaW5hbCBieSBKdWdhcm8gfCBodHRwczovL2dpdGh1Yi5jb20vSnVnYXJvL2xpZ2h0cy1vdXQtc3RvbmVzIHwgZmlyc3QgcHVibGlzaGVkOiAyMDI2LTEwIHwgY29udGFjdDogZ2l0aHViLmNvbS9KdWdhcm8=';
 
   /**
    * Решённая доска: все камни цвета target (по умолчанию белые).
@@ -144,6 +150,8 @@
     applyPress: applyPress,
     isWin: isWin,
     generateBoard: generateBoard,
-    makeRng: makeRng
+    makeRng: makeRng,
+    BUILD_SEAL: BUILD_SEAL,
+    BUILD_MANIFEST: BUILD_MANIFEST
   };
 });

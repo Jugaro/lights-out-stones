@@ -529,7 +529,7 @@
   <div><b>СЛОЖНОСТЬ</b><span id="diffLabel">—</span></div>
 </div>
 <div class="wood-row">
-  <div class="wb"><button class="wood-btn" id="pauseBtn" title="Пауза" aria-label="Пауза">⏸︎</button><span>пауза</span></div>
+  <div class="wb"><button class="wood-btn" id="pauseBtn" title="Пауза" aria-label="Пауза"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg></button><span>пауза</span></div>
   <div class="wb"><button class="wood-btn" id="undoBtn" title="Отменить ход" aria-label="Отменить ход" disabled>↩</button><span>отмена</span></div>
   <div class="wb"><button class="wood-btn" id="replayBtn" title="Заново" aria-label="Начать заново">↻</button><span>заново</span></div>
   <div class="wb"><button class="wood-btn" id="menuBtn" title="Меню" aria-label="Меню">☰</button><span>меню</span></div>
@@ -1700,7 +1700,7 @@
     state.usedUndo = false;
     state.undoArmed = false;
     marathonAgain = false;
-    pauseBtn.textContent = '⏸︎';
+    pauseBtn.innerHTML = ICON_PAUSE;
     els.time.textContent = '0:00';
     updateIncense();
     els.win.classList.remove('show');
@@ -1793,7 +1793,7 @@
     state.locked = false; state.paused = false; state.limitFailed = false;
     state.dailyDate = state.daily ? (s.dailyDate || dailyKey()) : null;
     state.dailyDay = state.daily ? new Date() : null;   // сессия живёт только в день доски — дата та же
-    pauseBtn.textContent = '⏸︎';
+    pauseBtn.innerHTML = ICON_PAUSE;
     els.time.textContent = fmtTime(state.elapsed);
     els.win.classList.remove('show');
     els.ruleHint.textContent = targetColor() === L.BLACK
@@ -2162,13 +2162,17 @@
 
   /* ---------- Пауза ---------- */
   var pauseBtn = document.getElementById('pauseBtn');
+  /* Значки паузы/плей — монохромный SVG: эмодзи ⏸/▶ на телефонах рисуются цветными
+     даже с селектором FE0E, а SVG наследует цвет кнопки (currentColor) */
+  var ICON_PAUSE = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7 5h3.5v14H7zM13.5 5H17v14h-3.5z"/></svg>';
+  var ICON_PLAY = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M8 5l10 7-10 7z"/></svg>';
   function pauseGame() {
     if (state.paused || state.locked) return;
     state.paused = true;
     stopTimer();
     saveSession();   // вкладку могут закрыть, пока стоит пауза
     document.body.classList.add('paused');
-    pauseBtn.textContent = '▶︎';
+    pauseBtn.innerHTML = ICON_PLAY;
     document.getElementById('endMarathonBtn').hidden = !state.marathon;
     els.pause.classList.add('show');
   }
@@ -2176,7 +2180,7 @@
     if (!state.paused) return;
     state.paused = false;
     document.body.classList.remove('paused');
-    pauseBtn.textContent = '⏸︎';
+    pauseBtn.innerHTML = ICON_PAUSE;
     els.pause.classList.remove('show');
     if (state.moves > 0 || state.elapsed > 0) startTimer(); // таймер продолжает с накопленного времени
                                                               // (elapsed>0 — ходы могли быть отменены до нуля)
@@ -2383,7 +2387,7 @@
     els.pause.classList.remove('show');
     state.paused = false;
     document.body.classList.remove('paused');   // иначе дымок и уголёк остаются «в паузе»
-    pauseBtn.textContent = '⏸︎';
+    pauseBtn.innerHTML = ICON_PAUSE;
     document.getElementById('endMarathonBtn').hidden = true;
     newGame();
     toast('Марафон завершён досрочно');
@@ -2393,7 +2397,7 @@
     els.pause.classList.remove('show');
     state.paused = false;
     document.body.classList.remove('paused');
-    pauseBtn.textContent = '⏸︎';
+    pauseBtn.innerHTML = ICON_PAUSE;
     document.getElementById('endMarathonBtn').hidden = true;
     newGame();
     toast('Новая попытка');

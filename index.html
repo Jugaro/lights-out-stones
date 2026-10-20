@@ -1296,7 +1296,7 @@
         var st = getStars(m, n, d);
         cell.innerHTML = locked
           ? '<span class="lvl-label">🔒</span><span class="lvl-stars"></span>'   // та же двухстрочная структура — иначе замки ниже текстовых кнопок
-          : '<span class="lvl-label">' + (done ? '✓ ' : '') + DIFF_NAMES[d] + '</span>' +
+          : '<span class="lvl-label">' + DIFF_NAMES[d] + '</span>' +   // без ✓: она переносила подпись и раздувала кнопку; прохождение видно по цвету и звёздам
             '<span class="lvl-stars">' + (st ? starString(st) : (done ? '☆☆☆' : '')) + '</span>';
         row.appendChild(cell);
       });

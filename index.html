@@ -488,6 +488,13 @@
   @media (max-width: 640px) {
     .wb.sound { width: 0; height: 0; overflow: visible; }
     .wb.sound span { display: none; }
+    /* Меню: на телефоне — плавающий кружок в правом верхнем углу (подпись скрыта) */
+    .wb.menu { width: 0; height: 0; overflow: visible; }
+    .wb.menu span { display: none; }
+    #menuBtn {
+      position: fixed; right: calc(14px + env(safe-area-inset-right, 0px));
+      top: calc(14px + env(safe-area-inset-top, 0px)); z-index: 40;
+    }
   }
   @media (min-width: 641px) {
     .music-toggle { position: static; flex: none; transform: none; }
@@ -522,8 +529,8 @@
   <div><b>СЛОЖНОСТЬ</b><span id="diffLabel">—</span></div>
 </div>
 <div class="wood-row">
-  <div class="wb"><button class="wood-btn" id="pauseBtn" title="Пауза" aria-label="Пауза">⏸</button><span>пауза</span></div>
-  <div class="wb"><button class="wood-btn" id="menuBtn" title="Меню" aria-label="Меню">☰</button><span>меню</span></div>
+  <div class="wb"><button class="wood-btn" id="pauseBtn" title="Пауза" aria-label="Пауза">⏸︎</button><span>пауза</span></div>
+  <div class="wb menu"><button class="wood-btn" id="menuBtn" title="Меню" aria-label="Меню">☰</button><span>меню</span></div>
   <div class="wb"><button class="wood-btn" id="undoBtn" title="Отменить ход" aria-label="Отменить ход" disabled>↩</button><span>отмена</span></div>
   <div class="wb"><button class="wood-btn" id="replayBtn" title="Заново" aria-label="Начать заново">↻</button><span>заново</span></div>
   <div class="wb sound"><button id="musicToggle" class="wood-btn music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6M18.1 6.4a8.2 8.2 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button><span>звук</span></div>
@@ -1682,7 +1689,7 @@
     state.usedUndo = false;
     state.undoArmed = false;
     marathonAgain = false;
-    pauseBtn.textContent = '⏸';
+    pauseBtn.textContent = '⏸︎';
     els.time.textContent = '0:00';
     updateIncense();
     els.win.classList.remove('show');
@@ -1775,7 +1782,7 @@
     state.locked = false; state.paused = false; state.limitFailed = false;
     state.dailyDate = state.daily ? (s.dailyDate || dailyKey()) : null;
     state.dailyDay = state.daily ? new Date() : null;   // сессия живёт только в день доски — дата та же
-    pauseBtn.textContent = '⏸';
+    pauseBtn.textContent = '⏸︎';
     els.time.textContent = fmtTime(state.elapsed);
     els.win.classList.remove('show');
     els.ruleHint.textContent = targetColor() === L.BLACK
@@ -2150,7 +2157,7 @@
     stopTimer();
     saveSession();   // вкладку могут закрыть, пока стоит пауза
     document.body.classList.add('paused');
-    pauseBtn.textContent = '▶';
+    pauseBtn.textContent = '▶︎';
     document.getElementById('endMarathonBtn').hidden = !state.marathon;
     els.pause.classList.add('show');
   }
@@ -2158,7 +2165,7 @@
     if (!state.paused) return;
     state.paused = false;
     document.body.classList.remove('paused');
-    pauseBtn.textContent = '⏸';
+    pauseBtn.textContent = '⏸︎';
     els.pause.classList.remove('show');
     if (state.moves > 0 || state.elapsed > 0) startTimer(); // таймер продолжает с накопленного времени
                                                               // (elapsed>0 — ходы могли быть отменены до нуля)
@@ -2365,7 +2372,7 @@
     els.pause.classList.remove('show');
     state.paused = false;
     document.body.classList.remove('paused');   // иначе дымок и уголёк остаются «в паузе»
-    pauseBtn.textContent = '⏸';
+    pauseBtn.textContent = '⏸︎';
     document.getElementById('endMarathonBtn').hidden = true;
     newGame();
     toast('Марафон завершён досрочно');
@@ -2375,7 +2382,7 @@
     els.pause.classList.remove('show');
     state.paused = false;
     document.body.classList.remove('paused');
-    pauseBtn.textContent = '⏸';
+    pauseBtn.textContent = '⏸︎';
     document.getElementById('endMarathonBtn').hidden = true;
     newGame();
     toast('Новая попытка');

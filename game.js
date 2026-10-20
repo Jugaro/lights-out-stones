@@ -126,6 +126,9 @@
     for (var k = 0; k < numPresses; k++) {
       var r = Math.floor(rng() * n);
       var c = Math.floor(rng() * n);
+      // сердцевины не нажимаются в UI — и в генерации не должны:
+      // иначе доска может оказаться нерешаемой разрешёнными нажатиями
+      if (opts.blocks && opts.blocks.indexOf(r * n + c) >= 0) { k--; continue; }
       if (opts.presses) opts.presses.push([r, c]);
       board = applyPress(board, n, r, c, mode, opts.blocks);
     }

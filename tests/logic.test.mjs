@@ -8,6 +8,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const L = require('../game.js');
+const S = require('../solver.js');
 
 /* ---------- Решатель над GF(2) для проверки решаемости ---------- */
 
@@ -286,4 +287,63 @@ test('isWin с блоками: закрытые клетки не учитыва
   assert.ok(!L.isWin(b, L.WHITE, blocks));
   // без списка блоков та же доска — не победа
   assert.ok(!L.isWin(b, L.WHITE));
+});
+
+/* ---------- Гарантии решаемости (регрессия: софтлок и недостижимые ★★★) ---------- */
+
+test('generateBoard с блоками: генерация не нажимает сердцевины', () => {
+  for (const mode of L.MODES) {
+    for (const n of [5, 7]) {
+      const rng = L.makeRng(n * 977);
+      const blocks = [0, 4, n * n - 1, 2 * n + 2];
+      const presses = [];
+      L.generateBoard(n, 20, rng, mode, L.WHITE, { blocks, presses });
+      for (const [r, c] of presses) {
+        assert.ok(!blocks.includes(r * n + c), `${mode} n=${n}: нажата сердцевина ${r},${c}`);
+      }
+    }
+  }
+});
+
+test('generateBoard с блоками: доска решаема только разрешёнными нажатиями (все режимы)', () => {
+  for (const mode of L.MODES) {
+    for (const n of [5, 7]) {
+      for (let seed = 1; seed <= 20; seed++) {
+        const rng = L.makeRng(seed * 977 + n);
+        const blocks = Array.from({ length: 3 }, () => Math.floor(rng() * n * n));
+        const board = L.generateBoard(n, 6, rng, mode, L.WHITE, { blocks });
+        const sol = S.minWeight(board, n, mode, L.WHITE, blocks, L);
+        assert.ok(sol !== null, `нерешаема в UI: ${mode} n=${n} seed=${seed}`);
+        let b = board.slice();
+        for (const [r, c] of sol.presses) b = L.applyPress(b, n, r, c, mode, blocks);
+        assert.ok(L.isWin(b, L.WHITE, blocks), `решение не верифицируется: ${mode} n=${n}`);
+      }
+    }
+  }
+});
+
+test('баланс: цикл перегенерации newGame даёт минимум ≤ нормы за ≤ 20 попыток (★★★ достижимы)', () => {
+  // Повторяет логику отбраковки из newGame (index.html): доска принимается,
+  // только если её точный минимум не длиннее par. Исторически проблемный
+  // режим — «Крест» (единственное решение на 7×7 не влезало в норму).
+  const PAR = { 3: { easy: 3, medium: 5, hard: 7 }, 5: { easy: 5, medium: 8, hard: 11 }, 7: { easy: 8, medium: 12, hard: 16 } };
+  const RANGE = { easy: { 3: [2, 3], 5: [4, 6], 7: [6, 9] }, medium: { 3: [4, 6], 5: [8, 12], 7: [12, 16] }, hard: { 3: [7, 9], 5: [14, 18], 7: [18, 24] } };
+  for (const n of [3, 5, 7]) {
+    for (const diff of ['easy', 'medium', 'hard']) {
+      const par = PAR[n][diff];
+      const range = RANGE[diff][n];
+      for (let seed = 1; seed <= 30; seed++) {
+        const rng = L.makeRng(seed * 131 + n * 17 + diff.length);
+        let board = null, sol = null, tries = 0;
+        do {
+          const num = range[0] + Math.floor(rng() * (range[1] - range[0] + 1));
+          board = L.generateBoard(n, num, rng, 'cross', L.WHITE, {});
+          sol = S.minWeight(board, n, 'cross', L.WHITE, [], L);
+          tries++;
+        } while ((sol === null || sol.weight > par || L.isWin(board)) && tries < 20);
+        assert.ok(sol !== null && sol.weight <= par && !L.isWin(board),
+          `cross n=${n} ${diff} seed=${seed}: за ${tries} попыток не выдана доска с минимумом ≤ ${par}`);
+      }
+    }
+  }
 });

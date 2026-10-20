@@ -57,6 +57,8 @@
   h1 {
     font-size: clamp(22px, 5vw, 34px);
     letter-spacing: 0.12em;
+    padding-left: 0.12em;   /* компенсация letter-spacing: хвостовой зазор сдвигает текст левее центра */
+    text-align: center;     /* h1 растянут на ширину main — без этого текст прижат влево */
     font-weight: 600;
     color: #17100a;
     /* тонкий белый контур — четырея смещённые копии текста */
@@ -416,7 +418,7 @@
     .seg button { flex: 1; padding: 8px 6px; font-size: 13.5px; }
     table.wins { font-size: 12px; }
     table.wins th, table.wins td { padding: 4px 3px; }
-    h1 { letter-spacing: 0.04em; font-size: 20px; }
+    h1 { letter-spacing: 0.04em; padding-left: 0.04em; font-size: 20px; }
     .wood-row { gap: 8px; }
     .stats { gap: 8px; font-size: 12.5px; }
     .stats span { font-size: 16px; }

@@ -759,6 +759,7 @@
 </div>
 
 <script src="game.js"></script>
+<script src="solver.js"></script>
 <script>
   /* Безопасное хранилище: в приватном режиме Firefox/Safari и в WebView с запретом
      кук localStorage бросает SecurityError — иначе игра падает на старте. Подменяем
@@ -1619,15 +1620,22 @@
       ? makeBlocks(n, state.daily ? mulberry32(dailySeed() ^ 0x9e3779b9) : Math.random)
       : [];
     // защита от случайно «пустой» генерации (нажатия сократились до нуля):
-    // перегенерируем, пока стартовая позиция не станет нерешённой
-    var board, num, tries = 0;
+    // перегенерируем, пока стартовая позиция не станет нерешённой.
+    // Плюс две гарантии через GF(2)-решатель:
+    // (1) доска решаема только разрешёнными нажатиями (без нажатий на сердцевины),
+    // (2) минимальное решение не длиннее нормы — иначе ★★★ недостижимы.
+    // Вызов дня норму не проверяет (там свой лимит ходов) — только решаемость.
+    var board, num, tries = 0, boardOk = false;
     var rec = [];
+    var parNow = state.daily ? 0 : parFor(n, state.diff);
     do {
       num = range[0] + Math.floor(rng() * (range[1] - range[0] + 1));
       rec = [];
       board = L.generateBoard(n, num, rng, mode, color, { blocks: state.blocks, presses: rec });
       tries++;
-    } while (L.isWin(board, color, state.blocks) && tries < 20);
+      var sol = window.LOSolver.minWeight(board, n, mode, color, state.blocks, L);
+      boardOk = sol !== null && (!parNow || sol.weight <= parNow);
+    } while ((L.isWin(board, color, state.blocks) || !boardOk) && tries < 20);
     state.n = n;
     state.mode = mode;
     state.board = board;

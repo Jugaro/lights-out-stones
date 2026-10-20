@@ -1,9 +1,10 @@
 /* Service worker: полный офлайн-кэш + автообновление. Работает только по http/https. */
-const CACHE = 'lights-out-stones-v8';
+const CACHE = 'lights-out-stones-v9';
 const ASSETS = [
   './',
   './index.html',
   './game.js',
+  './solver.js',
   './manifest.json',
   './music-theme.mp3',
   './music-fire.mp3',

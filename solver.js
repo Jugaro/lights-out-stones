@@ -1,5 +1,7 @@
 /*
  * Lights Out Stones — GF(2)-решатель: точный минимальный вес решения.
+ * Copyright (c) 2026 Jugaro. Лицензия: MIT (см. LICENSE).
+ * Оригинальный репозиторий: https://github.com/Jugaro/lights-out-stones
  * UMD, как в game.js: браузер (window.LOSolver) + Node (module.exports).
  *
  * Использование:

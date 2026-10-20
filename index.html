@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#e6c896">
 <meta name="color-scheme" content="light">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; media-src 'self'; connect-src 'self'; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <title>Lights Out Stones</title>
 <meta name="description" content="Восточная головоломка: нажатие переворачивает камень и всю его строку со столбцом. Приведи доску к одному цвету — 3×3, 5×5, 7×7, вызов дня каждый день.">
 <meta property="og:type" content="website">
@@ -16,6 +17,7 @@
 <meta property="og:image:height" content="630">
 <meta property="og:locale" content="ru_RU">
 <meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="favicon.ico" sizes="any">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%27http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%27%20viewBox%3D%270%200%20512%20512%27%3E%3Cdefs%3E%3CradialGradient%20id%3D%27s%27%20cx%3D%2735%25%27%20cy%3D%2730%25%27%20r%3D%2778%25%27%3E%3Cstop%20offset%3D%270%27%20stop-color%3D%27%235c5c62%27%2F%3E%3Cstop%20offset%3D%270.55%27%20stop-color%3D%27%232c2c30%27%2F%3E%3Cstop%20offset%3D%271%27%20stop-color%3D%27%23101013%27%2F%3E%3C%2FradialGradient%3E%3C%2Fdefs%3E%3Crect%20width%3D%27512%27%20height%3D%27512%27%20rx%3D%27100%27%20fill%3D%27%23e2bd7f%27%2F%3E%3Cpath%20d%3D%27M0%2090h512M0%20180h512M0%20270h512M0%20360h512M0%20450h512%27%20stroke%3D%27%23c89a5e%27%20stroke-width%3D%278%27%20opacity%3D%270.55%27%2F%3E%3Crect%20x%3D%2716%27%20y%3D%2716%27%20width%3D%27480%27%20height%3D%27480%27%20rx%3D%2788%27%20fill%3D%27none%27%20stroke%3D%27%23a07840%27%20stroke-width%3D%2710%27%2F%3E%3Ccircle%20cx%3D%27256%27%20cy%3D%27268%27%20r%3D%27150%27%20fill%3D%27url%28%23s%29%27%2F%3E%3Cellipse%20cx%3D%27204%27%20cy%3D%27206%27%20rx%3D%2746%27%20ry%3D%2732%27%20fill%3D%27%23ffffff%27%20opacity%3D%270.3%27%2F%3E%3C%2Fsvg%3E">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="manifest" href="manifest.json">
@@ -551,7 +553,7 @@
 </div>
 <div class="scene">
   <div class="board-frame">
-    <div class="board" id="board"></div>
+    <div class="board" id="board" role="group" aria-label="Игровая доска"></div>
   </div>
   <div class="incense-wrap">
     <div class="smoke" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -706,8 +708,8 @@
     <div class="menu-row">
       <div class="menu-label">Сложность</div>
       <div class="seg" id="diffSeg">
-        <button data-diff="easy">Легко</button>
-        <button data-diff="medium" class="active">Средне</button>
+        <button data-diff="easy" class="active">Легко</button>
+        <button data-diff="medium">Средне</button>
         <button data-diff="hard">Тяжело</button>
       </div>
     </div>
@@ -759,6 +761,7 @@
     <div class="row">
       <button class="btn" id="closeSettingsBtn">Готово</button>
     </div>
+    <div class="menu-note"><a href="privacy.html" target="_blank" rel="noopener">Конфиденциальность</a></div>
   </div>
 </div>
 
@@ -944,21 +947,21 @@
     CAMPAIGN.forEach(function (c) { if (campaignDone[m + '_' + c.n + '_' + c.d]) done++; });
     document.getElementById('campCaption').textContent = pos
       ? ('«' + MODE_NAMES[m] + '» · ' + done + '/9')
-      : ('«' + MODE_NAMES[m] + '» пройдена · тень ' + shadowCount(m) + '/9');
+      : ('«' + MODE_NAMES[m] + '» пройдена · мастерство ' + shadowCount(m) + '/9');
     document.getElementById('campDots').innerHTML = CAMPAIGN.map(function (c) {
       var isDone = !!campaignDone[m + '_' + c.n + '_' + c.d];
       var isNext = pos && pos.n === c.n && pos.d === c.d;
       return '<i class="' + (isDone ? 'done' : '') + (isNext ? ' next' : '') + '"></i>';
     }).join('');
     var par = parFor(state.n, state.diff);
-    document.getElementById('campNorm').textContent = par ? ('норма: ' + pluralMoves(par)) : '';
+    document.getElementById('campNorm').textContent = par ? ('на ★★★: ' + pluralMoves(par)) : '';
   }
 
   var initialMode = ['cross', 'diagonals'].indexOf(store.getItem('los_mode')) >= 0 ? store.getItem('los_mode') : 'rays';
   var state = {
     n: 5,
     mode: initialMode,
-    diff: DIFFS.indexOf(store.getItem('los_diff')) >= 0 ? store.getItem('los_diff') : 'medium',
+    diff: DIFFS.indexOf(store.getItem('los_diff')) >= 0 ? store.getItem('los_diff') : 'easy',   // новичку — мягкий старт
     target: store.getItem('los_target') === 'black' ? 'black' : 'white',
     sound: store.getItem('los_sound') !== 'off',
     music: (function () {
@@ -1270,7 +1273,7 @@
     var pos = campaignPos(m);
     document.getElementById('levelsZen').textContent = pos
       ? ('кампания режима «' + MODE_NAMES[m] + '»: ' + done9 + ' из 9 · следующая — ' + pos.n + '×' + pos.n + ', ' + DIFF_NAMES[pos.d].toLowerCase())
-      : 'кампания режима «' + MODE_NAMES[m] + '» пройдена · тень: ' + shadowCount(m) + ' из 9 · открыт размер 9×9';
+      : 'кампания режима «' + MODE_NAMES[m] + '» пройдена · мастерство: ' + shadowCount(m) + ' из 9 · открыт размер 9×9';
     document.getElementById('levelsNote').textContent =
       'У каждого режима — своя кампания: уровни открываются по мере прохождения. Замочек — ещё не доступно. Звёзды: ★★★ — без отмены в пределах нормы ходов.';
     grid.innerHTML = '';
@@ -1332,6 +1335,15 @@
       'КАМПАНИЯ «' + MODE_NAMES[mode].toUpperCase() + '» ПРОЙДЕНА';
     document.getElementById('modeDoneText').textContent =
       'Все девять комбинаций позади — от лёгкой тройки до тяжёлой семёрки. Можно продолжать в этом режиме или испытать другой путь.';
+    // только что пройденный режим не предлагаем; финишированные ранее — помечаем галочкой
+    var btns = { cross: 'modeCrossBtn', diagonals: 'modeDiagBtn' };
+    Object.keys(btns).forEach(function (m) {
+      var b = document.getElementById(btns[m]);
+      var done = campaignPos(m) === null;
+      b.hidden = (m === mode);
+      b.disabled = !b.hidden && done;
+      b.textContent = MODE_NAMES[m] + (done && m !== mode ? ' ✓' : '');
+    });
     els.mode.classList.add('show');
   }
   function switchModeFromChoice(m) {
@@ -1457,7 +1469,8 @@
           var isBlock = state.blocks.indexOf(idx) >= 0;
           cell.className = 'cell' + (state.board[idx] === L.BLACK ? ' black' : '') + (isBlock ? ' block' : '');
           if (idx === state.suggestCell) cell.classList.add('suggest');
-          cell.setAttribute('aria-label', 'камень ' + (r + 1) + '-' + (c + 1) + (isBlock ? ' (сердцевина)' : ''));
+          cell.setAttribute('aria-label', 'камень ' + (r + 1) + '-' + (c + 1) + (isBlock ? ', сердцевина' : (state.board[idx] === L.BLACK ? ', тёмный' : ', светлый')));
+          if (!isBlock) cell.setAttribute('aria-pressed', state.board[idx] === L.BLACK ? 'true' : 'false');
           if (idx === pressedIdx) {
             cell.classList.add('pressed');
             setTimeout(function () { cell.classList.remove('pressed'); }, 300);
@@ -1598,7 +1611,7 @@
   }
   var dailyBtn = document.getElementById('dailyBtn');
   function updateDailyBtn() {
-    var rec = store.getItem(dailyKey());
+    var rec = readDailyRec(dailyKey());   // битый JSON ≠ пройденный вызов
     // серия дней словами — огонёк без пояснения читается как «популярно»
     var s = getStreak();
     var stTxt = (s.count > 1 && s.last === dayStr()) ? (' · серия ' + s.count + ' дн.') : '';
@@ -2387,8 +2400,18 @@
     newGame();
     toast('Новая попытка');
   });
-  /* «Заново» на главном экране: то же самое без окна паузы */
+  /* «Заново» на главном экране: если партия начата — просим подтвердить вторым нажатием (3 сек) */
+  var replayArmed = false, replayArmTimer = null;
   document.getElementById('replayBtn').addEventListener('click', function () {
+    if (state.moves > 0 && !state.locked && !replayArmed) {
+      replayArmed = true;
+      toast('Ещё раз — и доска пересоберётся');
+      clearTimeout(replayArmTimer);
+      replayArmTimer = setTimeout(function () { replayArmed = false; }, 3000);
+      return;
+    }
+    replayArmed = false;
+    clearTimeout(replayArmTimer);
     newGame();
     toast('Новая попытка');
   });

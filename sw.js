@@ -1,6 +1,6 @@
 /* Service worker: полный офлайн-кэш + автообновление. Работает только по http/https.
    © 2026 Chistyakov Sergey Victorovich · Lights Out Stones · github.com/Jugaro/lights-out-stones · печать 95c439226dfd78e9 */
-const CACHE = 'lights-out-stones-v19';
+const CACHE = 'lights-out-stones-v20';
 const ASSETS = [
   './',
   './index.html',

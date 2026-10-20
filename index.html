@@ -761,6 +761,13 @@
         <button data-vibro="off">Выкл</button>
       </div>
     </div>
+    <div class="menu-row">
+      <div class="menu-label">Язык</div>
+      <div class="seg" id="langSeg">
+        <button data-lang="ru">Рус</button>
+        <button data-lang="en">Eng</button>
+      </div>
+    </div>
     <div class="menu-note" id="modeNote"></div>
     <div class="row">
       <button class="btn" id="closeSettingsBtn">Готово</button>
@@ -801,6 +808,226 @@
   'use strict';
   var L = window.LightsOutLogic;
 
+  /* ---------- Локализация: словарь RU/EN, автоопределение, ручной выбор ----------
+   * Язык: localStorage 'los_lang' переопределяет автоопределение по navigator.language
+   * (всё, что не начинается с ru — английский). Строки HTML по умолчанию русские;
+   * applyStaticTexts() перезаписывает их при любом выбранном языке.
+   */
+  var LANG = (function () {
+    var l = store.getItem('los_lang');
+    if (l === 'ru' || l === 'en') return l;
+    var nav = (navigator.language || (navigator.languages && navigator.languages[0]) || 'ru').toLowerCase();
+    return nav.indexOf('ru') === 0 ? 'ru' : 'en';
+  })();
+  var STR = {
+    ru: {
+      mode_rays: 'Лучи', mode_cross: 'Крест', mode_diagonals: 'Диагонали',
+      diff_easy: 'Легко', diff_medium: 'Средне', diff_hard: 'Тяжело',
+      note_rays: 'Лучи: нажатие переворачивает все камни своей строки и своего столбца.',
+      note_cross: 'Крест: нажатие переворачивает камень и его ближайших соседей по вертикали и горизонтали.',
+      note_diagonals: 'Диагонали: нажатие переворачивает обе диагонали, проходящие через камень.',
+      tier_medium: 'Доступны уровни средней трудности!',
+      tier_hard: 'Доступны уровни высокой трудности!',
+      coach_1: 'Первая партия! Нажмите на подсвеченный камень — перевернётся он и вся его строка со столбцом.',
+      coach_2: 'Верно! Цель — все камни одного цвета. Нажмите следующий подсвеченный камень.',
+      coach_3: 'Хорошо! Завершите доску — и уровень пройден.',
+      rule_white: 'Переверни все чёрные камни белой стороной вверх',
+      rule_black: 'Переверни все белые камни чёрной стороной вверх',
+      st_moves: 'ХОДЫ', st_time: 'ВРЕМЯ', st_best: 'РЕКОРД', st_diff: 'СЛОЖНОСТЬ',
+      cap_pause: 'пауза', cap_undo: 'отмена', cap_replay: 'заново', cap_menu: 'меню', cap_sound: 'звук',
+      title_pause: 'Пауза', title_undo: 'Отменить ход', title_replay: 'Заново', title_menu: 'Меню', title_music: 'Музыка вкл/выкл',
+      aria_coach_skip: 'Закрыть подсказку', aria_board: 'Игровая доска',
+      sound_hint: 'коснитесь экрана — зазвучит музыка',
+      win_title: 'ПОБЕДА',
+      win_zen_white: 'все камни стали белыми — доска едина',
+      win_zen_black: 'все камни стали чёрными — доска едина',
+      win_zen_daily: 'вызов дня пройден',
+      win_zen_marathon: 'марафон завершён',
+      btn_again: 'Играть снова', btn_try_again: 'Ещё попытка', btn_next: 'Следующий уровень',
+      btn_free_play: 'Свободная игра', btn_more_marathon: 'Ещё марафон',
+      btn_share: '⤴ Поделиться', btn_win_menu: '☰ В меню',
+      win_details_level: 'Уровень {n}×{n} · {time} · {moves} · {stars}',
+      win_details_daily: 'Вызов дня · {time} · {moves}',
+      win_details_marathon: 'Марафон · {count} доски · итого {time} · {moves}',
+      win_record_new: '✦ Новый рекорд! ✦', win_record: 'Рекорд: {time}',
+      win_daily_first: '✦ Первое прохождение сегодня! ✦',
+      win_daily_better: '✦ Лучше сегодняшнего: {time} ✦',
+      win_daily_best: 'Сегодня лучше: {time}',
+      win_streak: 'Серия дней: {flames}',
+      win_week_best: '✦ Лучшее время недели! ✦',
+      win_stars_hint: '★★★ — без отмены в пределах нормы ходов · ★★ — вдвое больше нормы',
+      win_marathon_counted: 'Победы засчитаны в кампанию',
+      marathon_record_new: '✦ Лучший марафон! ✦', marathon_record: 'Лучший марафон: {time}',
+      camp_progress: '«{mode}» · {done}/9',
+      camp_done: '«{mode}» пройдена · мастерство {shadow}/9',
+      camp_norm: 'на ★★★: {moves}',
+      limit_title: 'ХОДЫ ЗАКОНЧИЛИСЬ',
+      limit_info: 'Лимит {moves} исчерпан. Можно отменить последний ход или начать попытку заново.',
+      btn_limit_retry: 'Ещё попытка', btn_menu: 'Меню',
+      stats_title: 'СТАТИСТИКА', stats_zen: 'список побед',
+      lbl_mode: 'Режим', flt_all: 'Все',
+      btn_reset_stats: 'Сбросить рекорды', btn_close: 'Закрыть', btn_done: 'Готово',
+      pause_title: 'ПАУЗА', pause_zen: 'пусть доска подождёт — мысль догонит',
+      btn_resume: 'Продолжить', btn_restart: 'Заново', btn_end_marathon: 'Завершить марафон',
+      menu_title: 'МЕНЮ', menu_zen: 'огни доски ждут решения',
+      btn_daily: '☀ Вызов дня', btn_daily_done: '☑ Вызов дня',
+      streak_days: ' · серия {n} дн.',
+      btn_new_game: 'Новая игра', btn_marathon: '⚑ Марафон', btn_settings: 'Настройки',
+      btn_stats: 'Статистика', btn_exit: 'Выйти',
+      levels_title: 'УРОВНИ',
+      levels_zen_pos: 'кампания режима «{mode}»: {done} из 9 · следующая — {n}×{n}, {diff}',
+      levels_zen_done: 'кампания режима «{mode}» пройдена · мастерство: {shadow} из 9 · открыт размер 9×9',
+      levels_note: 'У каждого режима — своя кампания: уровни открываются по мере прохождения. Замочек — ещё не доступно. Звёзды: ★★★ — без отмены в пределах нормы ходов.',
+      set_title: 'НАСТРОЙКИ', set_zen: 'как играет доска',
+      lbl_rocks: 'Препятствия', lbl_diff: 'Сложность', lbl_target: 'Цель', lbl_sound: 'Звук',
+      lbl_music: 'Музыка', lbl_volume: 'Громкость музыки', lbl_hint: 'Подсветка хода',
+      lbl_vibro: 'Виброотклик', lbl_lang: 'Язык',
+      on: 'Вкл', off: 'Выкл',
+      target_white: '⚪ Белые', target_black: '⚫ Чёрные',
+      opt_off: 'Выкл', opt_fire: 'Камин', opt_rain: 'Дождь', opt_sakura: 'Сакура',
+      link_privacy: 'Конфиденциальность',
+      mode_done_title: 'КАМПАНИЯ «{mode}» ПРОЙДЕНА',
+      mode_done_text: 'Все девять комбинаций позади — от лёгкой тройки до тяжёлой семёрки. Можно продолжать в этом режиме или испытать другой путь.',
+      btn_stay: 'Остаться',
+      toast_new_path: 'Новый путь — «{mode}»: {n}×{n}, {diff}',
+      toast_mode_free: '«{mode}» уже пройден — свободный выбор',
+      toast_marathon_restored: 'Марафон восстановлен: доска {i} из {total}',
+      toast_marathon_start: 'Марафон: 3 доски подряд без выхода. Удачи!',
+      toast_marathon_progress: 'Марафон · доска {i} из {total} · {time}',
+      toast_marathon_aborted: 'Марафон завершён досрочно',
+      toast_new_try: 'Новая попытка',
+      toast_replay_arm: 'Ещё раз — и доска пересоберётся',
+      toast_shadow: 'Открыта теневая кампания: пройдите доски с препятствиями',
+      toast_close_hint: 'Сверните приложение кнопкой «Назад» или свайпом',
+      confirm_reset: 'Сбросить все рекорды и списки побед?',
+      copied: '✓ Скопировано',
+      share_daily: 'Lights Out Stones — Вызов дня · {date}',
+      share_level: 'Lights Out Stones · Уровень {n}×{n} · {mode} · {diff}',
+      share_win: 'Победа: {time} · {moves}',
+      stats_daily: 'Вызов дня', stats_streak: 'серия {streak}',
+      stats_week: 'Неделя · лучшие времена',
+      stats_empty_all: 'Пока нет побед — доска ждёт.',
+      stats_empty_mode: 'В этом режиме побед пока нет — доска ждёт.',
+      th_date: 'ДАТА', th_level: 'УРОВЕНЬ', th_mode: 'РЕЖИМ', th_time: 'ВРЕМЯ',
+      th_moves: 'ХОДЫ', th_diff: 'СЛОЖН.', th_target: 'ЦЕЛЬ',
+      aria_stone: 'камень {pos}', aria_core: ', сердцевина', aria_dark: ', тёмный', aria_light: ', светлый'
+    },
+    en: {
+      mode_rays: 'Rays', mode_cross: 'Cross', mode_diagonals: 'Diagonals',
+      diff_easy: 'Easy', diff_medium: 'Medium', diff_hard: 'Hard',
+      note_rays: 'Rays: a tap flips every stone in the stone\'s row and column.',
+      note_cross: 'Cross: a tap flips the stone and its nearest neighbors vertically and horizontally.',
+      note_diagonals: 'Diagonals: a tap flips both diagonals passing through the stone.',
+      tier_medium: 'Medium levels unlocked!',
+      tier_hard: 'Hard levels unlocked!',
+      coach_1: 'First game! Tap the highlighted stone — it flips along with its entire row and column.',
+      coach_2: 'Correct! The goal is all stones in one color. Tap the next highlighted stone.',
+      coach_3: 'Good! Finish the board — and the level is complete.',
+      rule_white: 'Flip all black stones white side up',
+      rule_black: 'Flip all white stones black side up',
+      st_moves: 'MOVES', st_time: 'TIME', st_best: 'BEST', st_diff: 'DIFFICULTY',
+      cap_pause: 'pause', cap_undo: 'undo', cap_replay: 'restart', cap_menu: 'menu', cap_sound: 'sound',
+      title_pause: 'Pause', title_undo: 'Undo move', title_replay: 'Restart', title_menu: 'Menu', title_music: 'Music on/off',
+      aria_coach_skip: 'Close hint', aria_board: 'Game board',
+      sound_hint: 'tap the screen — the music will play',
+      win_title: 'VICTORY',
+      win_zen_white: 'all stones turned white — the board is one',
+      win_zen_black: 'all stones turned black — the board is one',
+      win_zen_daily: 'daily challenge complete',
+      win_zen_marathon: 'marathon complete',
+      btn_again: 'Play again', btn_try_again: 'Try again', btn_next: 'Next level',
+      btn_free_play: 'Free play', btn_more_marathon: 'Another marathon',
+      btn_share: '⤴ Share', btn_win_menu: '☰ Menu',
+      win_details_level: 'Level {n}×{n} · {time} · {moves} · {stars}',
+      win_details_daily: 'Daily challenge · {time} · {moves}',
+      win_details_marathon: 'Marathon · {count} boards · total {time} · {moves}',
+      win_record_new: '✦ New record! ✦', win_record: 'Record: {time}',
+      win_daily_first: '✦ First completion today! ✦',
+      win_daily_better: '✦ Beat today\'s earlier time: {time} ✦',
+      win_daily_best: 'Today\'s best: {time}',
+      win_streak: 'Day streak: {flames}',
+      win_week_best: '✦ Best time of the week! ✦',
+      win_stars_hint: '★★★ — no undo within the move par · ★★ — up to twice the par',
+      win_marathon_counted: 'Wins counted toward the campaign',
+      marathon_record_new: '✦ Best marathon! ✦', marathon_record: 'Best marathon: {time}',
+      camp_progress: '«{mode}» · {done}/9',
+      camp_done: '«{mode}» complete · mastery {shadow}/9',
+      camp_norm: 'for ★★★: {moves}',
+      limit_title: 'OUT OF MOVES',
+      limit_info: 'The limit of {moves} is reached. You can undo the last move or restart the attempt.',
+      btn_limit_retry: 'Try again', btn_menu: 'Menu',
+      stats_title: 'STATISTICS', stats_zen: 'victory list',
+      lbl_mode: 'Mode', flt_all: 'All',
+      btn_reset_stats: 'Reset records', btn_close: 'Close', btn_done: 'Done',
+      pause_title: 'PAUSE', pause_zen: 'let the board wait — the thought will catch up',
+      btn_resume: 'Resume', btn_restart: 'Restart', btn_end_marathon: 'End marathon',
+      menu_title: 'MENU', menu_zen: 'the board lights await a solution',
+      btn_daily: '☀ Daily challenge', btn_daily_done: '☑ Daily challenge',
+      streak_days: ' · streak {n} d.',
+      btn_new_game: 'New game', btn_marathon: '⚑ Marathon', btn_settings: 'Settings',
+      btn_stats: 'Statistics', btn_exit: 'Exit',
+      levels_title: 'LEVELS',
+      levels_zen_pos: '«{mode}» campaign: {done} of 9 · next — {n}×{n}, {diff}',
+      levels_zen_done: '«{mode}» campaign complete · mastery: {shadow} of 9 · 9×9 size unlocked',
+      levels_note: 'Each mode has its own campaign: levels unlock as you progress. A lock means not available yet. Stars: ★★★ — no undo within the move par.',
+      set_title: 'SETTINGS', set_zen: 'how the board plays',
+      lbl_rocks: 'Obstacles', lbl_diff: 'Difficulty', lbl_target: 'Goal', lbl_sound: 'Sound',
+      lbl_music: 'Music', lbl_volume: 'Music volume', lbl_hint: 'Move highlight',
+      lbl_vibro: 'Haptics', lbl_lang: 'Language',
+      on: 'On', off: 'Off',
+      target_white: '⚪ White', target_black: '⚫ Black',
+      opt_off: 'Off', opt_fire: 'Fireplace', opt_rain: 'Rain', opt_sakura: 'Sakura',
+      link_privacy: 'Privacy',
+      mode_done_title: '«{mode}» CAMPAIGN COMPLETE',
+      mode_done_text: 'All nine combinations are behind you — from the easy three to the hard seven. You can continue in this mode or try another path.',
+      btn_stay: 'Stay',
+      toast_new_path: 'New path — «{mode}»: {n}×{n}, {diff}',
+      toast_mode_free: '«{mode}» already complete — free choice',
+      toast_marathon_restored: 'Marathon restored: board {i} of {total}',
+      toast_marathon_start: 'Marathon: 3 boards in a row, no quitting. Good luck!',
+      toast_marathon_progress: 'Marathon · board {i} of {total} · {time}',
+      toast_marathon_aborted: 'Marathon ended early',
+      toast_new_try: 'New attempt',
+      toast_replay_arm: 'Tap again to rebuild the board',
+      toast_shadow: 'Shadow campaign unlocked: clear the boards with obstacles',
+      toast_close_hint: 'Close the app with the Back button or a swipe',
+      confirm_reset: 'Reset all records and victory lists?',
+      copied: '✓ Copied',
+      share_daily: 'Lights Out Stones — Daily challenge · {date}',
+      share_level: 'Lights Out Stones · Level {n}×{n} · {mode} · {diff}',
+      share_win: 'Solved: {time} · {moves}',
+      stats_daily: 'Daily challenge', stats_streak: 'streak {streak}',
+      stats_week: 'Week · best times',
+      stats_empty_all: 'No wins yet — the board is waiting.',
+      stats_empty_mode: 'No wins in this mode yet — the board is waiting.',
+      th_date: 'DATE', th_level: 'LEVEL', th_mode: 'MODE', th_time: 'TIME',
+      th_moves: 'MOVES', th_diff: 'DIFF.', th_target: 'GOAL',
+      aria_stone: 'stone {pos}', aria_core: ', core', aria_dark: ', dark', aria_light: ', light'
+    }
+  };
+  function t(key) {
+    var v = STR[LANG] && STR[LANG][key];
+    return v !== undefined ? v : (STR.ru[key] !== undefined ? STR.ru[key] : key);
+  }
+  /* Подстановка {плейсхолдеров} в строки словаря */
+  function tf(key, vars) {
+    var s = t(key);
+    Object.keys(vars || {}).forEach(function (k) { s = s.split('{' + k + '}').join(String(vars[k])); });
+    return s;
+  }
+  /* Словари, зависящие от языка: пересобираются при смене (имена сохранены —
+     остальной код обращается к ним по-прежнему) */
+  var MODE_NAMES = {}, DIFF_NAMES = {}, DIFF_LABELS = {}, MODE_NOTES = {}, TIER_TOAST = {}, COACH_TEXT = {};
+  function rebuildDicts() {
+    MODE_NAMES = { rays: t('mode_rays'), cross: t('mode_cross'), diagonals: t('mode_diagonals') };
+    DIFF_NAMES = { easy: t('diff_easy'), medium: t('diff_medium'), hard: t('diff_hard') };
+    DIFF_LABELS = DIFF_NAMES;
+    MODE_NOTES = { rays: t('note_rays'), cross: t('note_cross'), diagonals: t('note_diagonals') };
+    TIER_TOAST = { medium: t('tier_medium'), hard: t('tier_hard') };
+    COACH_TEXT = { 1: t('coach_1'), 2: t('coach_2'), 3: t('coach_3') };
+  }
+  rebuildDicts();
+
   // Диапазоны числа случайных нажатий при генерации: режим → сложность → размер.
   // Меньше нажатий — проще партия; «лучи» перемешивают сильнее, поэтому там меньше.
   var PRESSES = {
@@ -823,11 +1050,7 @@
   var LEVELS = [3, 5, 7];
   var ALL_LEVELS = [3, 5, 7, 9];   // 9×9 — бонус за полное прохождение кампании
   var DIFFS = ['easy', 'medium', 'hard'];
-  var MODE_NOTES = {
-    rays: 'Лучи: нажатие переворачивает все камни своей строки и своего столбца.',
-    cross: 'Крест: нажатие переворачивает камень и его ближайших соседей по вертикали и горизонтали.',
-    diagonals: 'Диагонали: нажатие переворачивает обе диагонали, проходящие через камень.'
-  };
+  /* MODE_NOTES, MODE_NAMES, TIER_TOAST, DIFF_NAMES, COACH_TEXT — в блоке локализации выше */
 
   /* ---------- Кампания: три круга с ростом сложности ----------
    * Легко 3→5→7, затем средне 3→5→7, затем тяжело 3→5→7.
@@ -837,9 +1060,7 @@
    */
   var CAMPAIGN = [];
   DIFFS.forEach(function (d) { LEVELS.forEach(function (n) { CAMPAIGN.push({ n: n, d: d }); }); });
-  var MODE_NAMES = { rays: 'Лучи', cross: 'Крест', diagonals: 'Диагонали' };
   var CAMPAIGN_MODES = ['rays', 'cross', 'diagonals'];
-  var TIER_TOAST = { medium: 'Доступны уровни средней трудности!', hard: 'Доступны уровни высокой трудности!' };
   var campaignDone = {};
   (function loadCampaign() {
     var raw = store.getItem('los_campaign_done');
@@ -950,15 +1171,15 @@
     var done = 0;
     CAMPAIGN.forEach(function (c) { if (campaignDone[m + '_' + c.n + '_' + c.d]) done++; });
     document.getElementById('campCaption').textContent = pos
-      ? ('«' + MODE_NAMES[m] + '» · ' + done + '/9')
-      : ('«' + MODE_NAMES[m] + '» пройдена · мастерство ' + shadowCount(m) + '/9');
+      ? tf('camp_progress', { mode: MODE_NAMES[m], done: done })
+      : tf('camp_done', { mode: MODE_NAMES[m], shadow: shadowCount(m) });
     document.getElementById('campDots').innerHTML = CAMPAIGN.map(function (c) {
       var isDone = !!campaignDone[m + '_' + c.n + '_' + c.d];
       var isNext = pos && pos.n === c.n && pos.d === c.d;
       return '<i class="' + (isDone ? 'done' : '') + (isNext ? ' next' : '') + '"></i>';
     }).join('');
     var par = parFor(state.n, state.diff);
-    document.getElementById('campNorm').textContent = par ? ('на ★★★: ' + pluralMoves(par)) : '';
+    document.getElementById('campNorm').textContent = par ? tf('camp_norm', { moves: pluralMoves(par) }) : '';
   }
 
   var initialMode = ['cross', 'diagonals'].indexOf(store.getItem('los_mode')) >= 0 ? store.getItem('los_mode') : 'rays';
@@ -1022,11 +1243,6 @@
     for (var i = 0; i < ks.length; i++) if (ks[i].indexOf('los_best_') === 0) return false;
     return true;
   }
-  var COACH_TEXT = {
-    1: 'Первая партия! Нажмите на подсвеченный камень — перевернётся он и вся его строка со столбцом.',
-    2: 'Верно! Цель — все камни одного цвета. Нажмите следующий подсвеченный камень.',
-    3: 'Хорошо! Завершите доску — и уровень пройден.'
-  };
   function showCoach(step) {
     els.coachText.textContent = COACH_TEXT[step] || '';
     els.coach.hidden = false;
@@ -1263,7 +1479,6 @@
   }
 
   /* ---------- Окно «Уровни»: карта кампании 4×3 и выбор доски ---------- */
-  var DIFF_NAMES = { easy: 'Легко', medium: 'Средне', hard: 'Тяжело' };
   function renderLevels() {
     var grid = document.getElementById('levelsGrid');
     var m = state.mode;
@@ -1275,10 +1490,9 @@
     CAMPAIGN.forEach(function (c) { if (campaignDone[m + '_' + c.n + '_' + c.d]) done9++; });
     var pos = campaignPos(m);
     document.getElementById('levelsZen').textContent = pos
-      ? ('кампания режима «' + MODE_NAMES[m] + '»: ' + done9 + ' из 9 · следующая — ' + pos.n + '×' + pos.n + ', ' + DIFF_NAMES[pos.d].toLowerCase())
-      : 'кампания режима «' + MODE_NAMES[m] + '» пройдена · мастерство: ' + shadowCount(m) + ' из 9 · открыт размер 9×9';
-    document.getElementById('levelsNote').textContent =
-      'У каждого режима — своя кампания: уровни открываются по мере прохождения. Замочек — ещё не доступно. Звёзды: ★★★ — без отмены в пределах нормы ходов.';
+      ? tf('levels_zen_pos', { mode: MODE_NAMES[m], done: done9, n: pos.n, diff: DIFF_NAMES[pos.d].toLowerCase() })
+      : tf('levels_zen_done', { mode: MODE_NAMES[m], shadow: shadowCount(m) });
+    document.getElementById('levelsNote').textContent = t('levels_note');
     grid.innerHTML = '';
     ALL_LEVELS.forEach(function (n) {
       var row = document.createElement('div');
@@ -1335,9 +1549,8 @@
   /* ---------- Окно выбора пути: финал кампании режима ---------- */
   function showModeChoice(mode) {
     document.getElementById('modeDoneTitle').textContent =
-      'КАМПАНИЯ «' + MODE_NAMES[mode].toUpperCase() + '» ПРОЙДЕНА';
-    document.getElementById('modeDoneText').textContent =
-      'Все девять комбинаций позади — от лёгкой тройки до тяжёлой семёрки. Можно продолжать в этом режиме или испытать другой путь.';
+      tf('mode_done_title', { mode: MODE_NAMES[mode].toUpperCase() });
+    document.getElementById('modeDoneText').textContent = t('mode_done_text');
     // только что пройденный режим не предлагаем; финишированные ранее — помечаем галочкой
     var btns = { cross: 'modeCrossBtn', diagonals: 'modeDiagBtn' };
     Object.keys(btns).forEach(function (m) {
@@ -1362,8 +1575,8 @@
     renderLevels();
     newGame();
     toast(pos
-      ? 'Новый путь — «' + MODE_NAMES[m] + '»: ' + pos.n + '×' + pos.n + ', ' + DIFF_NAMES[pos.d].toLowerCase()
-      : '«' + MODE_NAMES[m] + '» уже пройден — свободный выбор');
+      ? tf('toast_new_path', { mode: MODE_NAMES[m], n: pos.n, diff: DIFF_NAMES[pos.d].toLowerCase() })
+      : tf('toast_mode_free', { mode: MODE_NAMES[m] }));
   }
 
   /* ---------- Аромапалочка: тление за 5 минут партийного времени ---------- */
@@ -1416,6 +1629,7 @@
     });
   }
   function pluralMoves(n) {
+    if (LANG === 'en') return n + (n === 1 ? ' move' : ' moves');
     var m = n % 10, h = n % 100;
     if (m === 1 && h !== 11) return n + ' ход';
     if (m >= 2 && m <= 4 && (h < 10 || h >= 20)) return n + ' хода';
@@ -1472,7 +1686,7 @@
           var isBlock = state.blocks.indexOf(idx) >= 0;
           cell.className = 'cell' + (state.board[idx] === L.BLACK ? ' black' : '') + (isBlock ? ' block' : '');
           if (idx === state.suggestCell) cell.classList.add('suggest');
-          cell.setAttribute('aria-label', 'камень ' + (r + 1) + '-' + (c + 1) + (isBlock ? ', сердцевина' : (state.board[idx] === L.BLACK ? ', тёмный' : ', светлый')));
+          cell.setAttribute('aria-label', tf('aria_stone', { pos: (r + 1) + '-' + (c + 1) }) + (isBlock ? t('aria_core') : (state.board[idx] === L.BLACK ? t('aria_dark') : t('aria_light'))));
           if (!isBlock) cell.setAttribute('aria-pressed', state.board[idx] === L.BLACK ? 'true' : 'false');
           if (idx === pressedIdx) {
             cell.classList.add('pressed');
@@ -1617,8 +1831,8 @@
     var rec = readDailyRec(dailyKey());   // битый JSON ≠ пройденный вызов
     // серия дней словами — огонёк без пояснения читается как «популярно»
     var s = getStreak();
-    var stTxt = (s.count > 1 && s.last === dayStr()) ? (' · серия ' + s.count + ' дн.') : '';
-    dailyBtn.textContent = (rec ? '☑ Вызов дня' : '☀ Вызов дня') + stTxt;
+    var stTxt = (s.count > 1 && s.last === dayStr()) ? tf('streak_days', { n: s.count }) : '';
+    dailyBtn.textContent = (rec ? t('btn_daily_done') : t('btn_daily')) + stTxt;
     dailyBtn.classList.toggle('active', state.daily === true);
   }
 
@@ -1714,9 +1928,7 @@
     els.mode.classList.remove('show');
     els.pause.classList.remove('show');
     els.limit.classList.remove('show');
-    els.ruleHint.textContent = color === L.BLACK
-      ? 'Переверни все белые камни чёрной стороной вверх'
-      : 'Переверни все чёрные камни белой стороной вверх';
+    els.ruleHint.textContent = color === L.BLACK ? t('rule_black') : t('rule_white');
     /* туториал: только для новичка и не в вызове дня */
     if (!state.daily && tutorialFresh()) {
       if (!state.tutStep) state.tutStep = 1;
@@ -1801,9 +2013,7 @@
     pauseBtn.innerHTML = ICON_PAUSE;
     els.time.textContent = fmtTime(state.elapsed);
     els.win.classList.remove('show');
-    els.ruleHint.textContent = targetColor() === L.BLACK
-      ? 'Переверни все белые камни чёрной стороной вверх'
-      : 'Переверни все чёрные камни белой стороной вверх';
+    els.ruleHint.textContent = targetColor() === L.BLACK ? t('rule_black') : t('rule_white');
     renderLevels(); paintGrid(); render(); syncMenu(); updateIncense(); renderCampStrip();
     // в вызове дня сложность не выбирается — скрываем и после восстановления сессии
     els.diffLabel.textContent = state.daily ? '' : (DIFF_NAMES[state.diff] || '—');
@@ -1815,7 +2025,7 @@
       renderBest();
     }
     updateDailyBtn();
-    if (state.marathon) toast('Марафон восстановлен: доска ' + (state.marathon.idx + 1) + ' из ' + LEVELS.length);
+    if (state.marathon) toast(tf('toast_marathon_restored', { i: state.marathon.idx + 1, total: LEVELS.length }));
     if (state.moves > 0) pauseGame();   // вернулся в незавершённую партию — сначала окно паузы
     return true;
   }
@@ -1851,7 +2061,7 @@
     sndClick();
     vibro([120, 60, 120]);
     clearSession();
-    els.limitInfo.textContent = 'Лимит ' + state.moveLimit + ' ходов исчерпан. Можно отменить последний ход или начать попытку заново.';
+    els.limitInfo.textContent = tf('limit_info', { moves: pluralMoves(state.moveLimit) });
     els.limit.classList.add('show');
   }
   function limitRetry() {
@@ -1910,24 +2120,24 @@
       recordDailyHistory(isRecord ? state.elapsed : prevRec.time, isRecord ? state.moves : prevRec.moves, dailyKeyToDate(key));
       lastWin = { daily: true, n: state.n, time: state.elapsed, moves: state.moves, start: state.startBoard };
       updateDailyBtn();
-      els.winZen.textContent = 'вызов дня пройден';
-      els.winDetails.textContent = 'Вызов дня · ' +
-        fmtTime(state.elapsed) + ' · ' + pluralMoves(state.moves);
+      els.winZen.textContent = t('win_zen_daily');
+      els.winDetails.textContent = tf('win_details_daily', {
+        time: fmtTime(state.elapsed), moves: pluralMoves(state.moves) });
       els.winRecord.textContent = isRecord
-        ? (prevRec ? '✦ Лучше сегодняшнего: ' + fmtTime(prevRec.time) + ' ✦' : '✦ Первое прохождение сегодня! ✦')
-        : 'Сегодня лучше: ' + fmtTime(prevRec.time);
+        ? (prevRec ? tf('win_daily_better', { time: fmtTime(prevRec.time) }) : t('win_daily_first'))
+        : tf('win_daily_best', { time: fmtTime(prevRec.time) });
       els.best.textContent = fmtTime(isRecord ? state.elapsed : prevRec.time);
       // серия дней: огоньки растут с каждым пройденным вызовом подряд
       var st = bumpStreak(state.dailyDay);
-      els.winBonus.textContent = st > 1 ? ('Серия дней: ' + streakFlames(st)) : '';
+      els.winBonus.textContent = st > 1 ? tf('win_streak', { flames: streakFlames(st) }) : '';
       els.winBonus.hidden = st <= 1;
       document.getElementById('nextBtn').hidden = true;   // в вызове дня «следующего уровня» нет
-      document.getElementById('againBtn').textContent = 'Ещё попытка';
+      document.getElementById('againBtn').textContent = t('btn_try_again');
       setTimeout(function () { els.win.classList.add('show'); }, 450);
       return;
     }
     document.getElementById('nextBtn').hidden = false;
-    document.getElementById('againBtn').textContent = 'Играть снова';
+    document.getElementById('againBtn').textContent = t('btn_again');
     var prev = getBest(n);
     var isRecord = prev === null || state.elapsed < prev;
     if (isRecord) store.setItem(bestKey(n), String(state.elapsed));
@@ -1962,7 +2172,7 @@
       state.marathon.moves += state.moves;
       if (state.marathon.idx < LEVELS.length - 1) {
         state.marathon.idx++;
-        toast('Марафон · доска ' + (state.marathon.idx + 1) + ' из ' + LEVELS.length + ' · ' + fmtTime(state.marathon.total));
+        toast(tf('toast_marathon_progress', { i: state.marathon.idx + 1, total: LEVELS.length, time: fmtTime(state.marathon.total) }));
         state.n = LEVELS[state.marathon.idx];
         newGame();
         // чекпоинт между досками — ПОСЛЕ newGame: saveSession не пишет locked-партию,
@@ -1976,27 +2186,25 @@
       var mPrev = store.getItem(mk);
       var mRecord = mPrev === null || m.total < Number(mPrev);
       if (mRecord) store.setItem(mk, String(m.total));
-      els.winZen.textContent = 'марафон завершён';
-      els.winDetails.textContent = 'Марафон · ' + LEVELS.length + ' доски · итого ' +
-        fmtTime(m.total) + ' · ' + pluralMoves(m.moves);
-      els.winRecord.textContent = mRecord ? '✦ Лучший марафон! ✦' : 'Лучший марафон: ' + fmtTime(Number(mPrev));
+      els.winZen.textContent = t('win_zen_marathon');
+      els.winDetails.textContent = tf('win_details_marathon', {
+        count: LEVELS.length, time: fmtTime(m.total), moves: pluralMoves(m.moves) });
+      els.winRecord.textContent = mRecord ? t('marathon_record_new') : tf('marathon_record', { time: fmtTime(Number(mPrev)) });
       els.winBonus.hidden = true;
       els.winBonus.textContent = '';
-      els.winSuggest.textContent = 'Победы засчитаны в кампанию';
+      els.winSuggest.textContent = t('win_marathon_counted');
       els.winSuggest.hidden = false;
-      document.getElementById('nextBtn').textContent = 'Ещё марафон';
+      document.getElementById('nextBtn').textContent = t('btn_more_marathon');
       marathonAgain = true;   // nextBtn перезапустит марафон, а не свободную игру
       renderBest();
       setTimeout(function () { els.win.classList.add('show'); }, 450);
       return;
     }
-    els.winZen.textContent = state.target === 'black'
-      ? 'все камни стали чёрными — доска едина'
-      : 'все камни стали белыми — доска едина';
-    els.winDetails.textContent = 'Уровень ' + n + '×' + n + ' · ' +
-      fmtTime(state.elapsed) + ' · ' + pluralMoves(state.moves) + ' · ' + starString(stars);
-    els.winRecord.textContent = isRecord ? '✦ Новый рекорд! ✦' : 'Рекорд: ' + fmtTime(prev);
-    document.getElementById('nextBtn').textContent = campaignPos(state.mode) ? 'Следующий уровень' : 'Свободная игра';
+    els.winZen.textContent = state.target === 'black' ? t('win_zen_black') : t('win_zen_white');
+    els.winDetails.textContent = tf('win_details_level', {
+      n: n, time: fmtTime(state.elapsed), moves: pluralMoves(state.moves), stars: starString(stars) });
+    els.winRecord.textContent = isRecord ? t('win_record_new') : tf('win_record', { time: fmtTime(prev) });
+    document.getElementById('nextBtn').textContent = campaignPos(state.mode) ? t('btn_next') : t('btn_free_play');
     // поздравление о следующем круге сложности (финал — отдельным окном выбора пути)
     els.winBonus.hidden = true;
     els.winBonus.textContent = '';
@@ -2009,10 +2217,10 @@
     }
     // разовая подсказка про звёзды + отметка лучшего времени недели
     var suggest = [];
-    if (weekRecord) suggest.push('✦ Лучшее время недели! ✦');
+    if (weekRecord) suggest.push(t('win_week_best'));
     if (!store.getItem('los_stars_hint')) {
       store.setItem('los_stars_hint', '1');
-      suggest.push('★★★ — без отмены в пределах нормы ходов · ★★ — вдвое больше нормы');
+      suggest.push(t('win_stars_hint'));
     }
     els.winSuggest.textContent = suggest.join('  ·  ');
     els.winSuggest.hidden = suggest.length === 0;
@@ -2026,7 +2234,7 @@
     // финал кампании — один раз сообщаем о теневой
     if (campaignComplete && !store.getItem('los_shadow_announced')) {
       store.setItem('los_shadow_announced', '1');
-      setTimeout(function () { toast('Открыта теневая кампания: пройдите доски с препятствиями'); }, 2900);
+      setTimeout(function () { toast(t('toast_shadow')); }, 2900);
     }
   }
 
@@ -2037,7 +2245,7 @@
     var dateStr = ('0' + d.getDate()).slice(-2) + '.' + ('0' + (d.getMonth() + 1)).slice(-2) + '.' + d.getFullYear();
     var lines = [];
     if (lastWin.daily) {
-      lines.push('Lights Out Stones — Вызов дня · ' + dateStr);
+      lines.push(tf('share_daily', { date: dateStr }));
       if (lastWin.start) {
         for (var r = 0; r < lastWin.n; r++) {
           var row = '';
@@ -2048,11 +2256,12 @@
         }
       }
     } else {
-      lines.push('Lights Out Stones · Уровень ' + lastWin.n + '×' + lastWin.n + ' · ' +
-        (lastWin.mode === 'cross' ? 'Крест' : (lastWin.mode === 'diagonals' ? 'Диагонали' : 'Лучи')) +
-        ' · ' + (DIFF_LABELS[lastWin.diff] || ''));
+      lines.push(tf('share_level', {
+        n: lastWin.n,
+        mode: MODE_NAMES[lastWin.mode] || MODE_NAMES.rays,
+        diff: DIFF_NAMES[lastWin.diff] || '' }));
     }
-    lines.push('Победа: ' + fmtTime(lastWin.time) + ' · ' + pluralMoves(lastWin.moves));
+    lines.push(tf('share_win', { time: fmtTime(lastWin.time), moves: pluralMoves(lastWin.moves) }));
     lines.push('https://jugaro.github.io/lights-out-stones/');
     return lines.join('\n');
   }
@@ -2076,7 +2285,7 @@
         var b = document.getElementById('shareBtn');
         if (!b) return;
         var t = b.textContent;
-        b.textContent = '✓ Скопировано';
+        b.textContent = t('copied');
         setTimeout(function () { b.textContent = t; }, 1600);
       };
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2086,16 +2295,15 @@
   }
 
   /* ---------- Статистика ---------- */
-  var DIFF_LABELS = { easy: 'Легко', medium: 'Средне', hard: 'Тяжело' };
   var statsFilter = 'all';
 
   function winsTable(rows) {
     var body = rows.map(function (w) {
-      var mode = w.mode === 'cross' ? 'крест' : (w.mode === 'rays' ? 'лучи' : (w.mode === 'diagonals' ? 'диагонали' : '—'));
+      var mode = MODE_NAMES[w.mode] ? MODE_NAMES[w.mode].toLowerCase() : '—';
       return '<tr><td>' + esc(w.date) + '</td><td>' + esc(w.level) + '×' + esc(w.level) + '</td><td>' +
         mode + '</td><td>' + fmtTime(w.time) + '</td><td>' + w.moves + '</td></tr>';
     }).join('');
-    return '<table class="wins"><tr><th>ДАТА</th><th>УРОВЕНЬ</th><th>РЕЖИМ</th><th>ВРЕМЯ</th><th>ХОДЫ</th></tr>' +
+    return '<table class="wins"><tr><th>' + t('th_date') + '</th><th>' + t('th_level') + '</th><th>' + t('th_mode') + '</th><th>' + t('th_time') + '</th><th>' + t('th_moves') + '</th></tr>' +
       body + '</table>';
   }
 
@@ -2107,12 +2315,12 @@
       var rows = daily.map(function (r) {
         return '<tr><td>' + esc(r.date) + '</td><td>' + fmtTime(r.time) + '</td><td>' + esc(r.moves) + '</td></tr>';
       }).join('');
-      els.dailyBody.innerHTML = '<div class="diff-title">Вызов дня' +
-        (streak ? ' · серия ' + streak : '') + '</div>' +
-        '<table class="wins"><tr><th>ДАТА</th><th>ВРЕМЯ</th><th>ХОДЫ</th></tr>' + rows + '</table>';
+      els.dailyBody.innerHTML = '<div class="diff-title">' + t('stats_daily') +
+        (streak ? ' · ' + tf('stats_streak', { streak: streak }) : '') + '</div>' +
+        '<table class="wins"><tr><th>' + t('th_date') + '</th><th>' + t('th_time') + '</th><th>' + t('th_moves') + '</th></tr>' + rows + '</table>';
     } else {
       els.dailyBody.innerHTML = streak
-        ? '<div class="diff-title">Вызов дня · серия ' + streak + '</div>'
+        ? '<div class="diff-title">' + t('stats_daily') + ' · ' + tf('stats_streak', { streak: streak }) + '</div>'
         : '';
     }
     // недельная лестница: лучшие времена текущей недели (обнуляются по понедельнику)
@@ -2131,17 +2339,17 @@
       .sort(function (a, b) { return a.time - b.time; }).slice(0, 10);
     if (wShown.length) {
       var wrows = wShown.map(function (x) {
-        var mn = x.mode === 'cross' ? 'крест' : (x.mode === 'rays' ? 'лучи' : 'диагонали');
+        var mn = (MODE_NAMES[x.mode] || '').toLowerCase();
         return '<tr><td>' + mn + '</td><td>' + x.n + '×' + x.n + '</td><td>' + (DIFF_LABELS[x.d] || '—') +
           '</td><td>' + (x.t === 'black' ? '⚫' : '⚪') + '</td><td>' + fmtTime(x.time) + '</td></tr>';
       }).join('');
-      weeklyHtml = '<div class="diff-title">Неделя · лучшие времена</div>' +
-        '<table class="wins"><tr><th>РЕЖИМ</th><th>УРОВЕНЬ</th><th>СЛОЖН.</th><th>ЦЕЛЬ</th><th>ВРЕМЯ</th></tr>' + wrows + '</table>';
+      weeklyHtml = '<div class="diff-title">' + t('stats_week') + '</div>' +
+        '<table class="wins"><tr><th>' + t('th_mode') + '</th><th>' + t('th_level') + '</th><th>' + t('th_diff') + '</th><th>' + t('th_target') + '</th><th>' + t('th_time') + '</th></tr>' + wrows + '</table>';
     }
     var wins = getWins().filter(function (w) { return statsFilter === 'all' || w.mode === statsFilter; });
     if (wins.length === 0) {
       els.winsBody.innerHTML = weeklyHtml || ('<div class="empty">' +
-        (statsFilter === 'all' ? 'Пока нет побед — доска ждёт.' : 'В этом режиме побед пока нет — доска ждёт.') +
+        t(statsFilter === 'all' ? 'stats_empty_all' : 'stats_empty_mode') +
         '</div>');
       return;
     }
@@ -2244,7 +2452,7 @@
       state.daily = false;
       state.marathon = { idx: 0, total: 0, moves: 0 };
       state.n = LEVELS[0];
-      toast('Марафон: 3 доски подряд без выхода. Удачи!');
+      toast(t('toast_marathon_start'));
       newGame();
       return;
     }
@@ -2301,7 +2509,7 @@
     // уходим из приложения: window.close() срабатывает в PWA и вкладках «с историей»;
     // если браузер не пускает — оставляем понятную подсказку
     window.close();
-    setTimeout(function () { toast('Сверните приложение кнопкой «Назад» или свайпом'); }, 400);
+    setTimeout(function () { toast(t('toast_close_hint')); }, 400);
   });
   document.getElementById('menuSettingsBtn').addEventListener('click', function () {
     syncMenu();
@@ -2383,7 +2591,7 @@
     state.daily = false;
     state.marathon = { idx: 0, total: 0, moves: 0 };
     state.n = LEVELS[0];
-    toast('Марафон: 3 доски подряд без выхода. Удачи!');
+    toast(t('toast_marathon_start'));
     newGame();
   });
   /* Завершить марафон досрочно (кнопка в окне паузы) */
@@ -2395,7 +2603,7 @@
     pauseBtn.innerHTML = ICON_PAUSE;
     document.getElementById('endMarathonBtn').hidden = true;
     newGame();
-    toast('Марафон завершён досрочно');
+    toast(t('toast_marathon_aborted'));
   });
   /* Сыграть заново: та же конфигурация, новая перетасовка (марафон — та же доска марафона) */
   document.getElementById('restartBtn').addEventListener('click', function () {
@@ -2405,14 +2613,14 @@
     pauseBtn.innerHTML = ICON_PAUSE;
     document.getElementById('endMarathonBtn').hidden = true;
     newGame();
-    toast('Новая попытка');
+    toast(t('toast_new_try'));
   });
   /* «Заново» на главном экране: если партия начата — просим подтвердить вторым нажатием (3 сек) */
   var replayArmed = false, replayArmTimer = null;
   document.getElementById('replayBtn').addEventListener('click', function () {
     if (state.moves > 0 && !state.locked && !replayArmed) {
       replayArmed = true;
-      toast('Ещё раз — и доска пересоберётся');
+      toast(t('toast_replay_arm'));
       clearTimeout(replayArmTimer);
       replayArmTimer = setTimeout(function () { replayArmed = false; }, 3000);
       return;
@@ -2420,7 +2628,7 @@
     replayArmed = false;
     clearTimeout(replayArmTimer);
     newGame();
-    toast('Новая попытка');
+    toast(t('toast_new_try'));
   });
   document.getElementById('coachSkip').addEventListener('click', finishTutorial);
   document.getElementById('soundSeg').addEventListener('click', function (e) {
@@ -2507,7 +2715,7 @@
     els.stats.classList.remove('show');
   });
   document.getElementById('resetStatsBtn').addEventListener('click', function () {
-    if (!confirm('Сбросить все рекорды и списки побед?')) return;
+    if (!confirm(t('confirm_reset'))) return;
     ['los_best_', 'los_stars_', 'los_week_', 'los_marathon_', 'los_daily_'].forEach(function (prefix) {
       store.keys().forEach(function (k) {
         if (k.indexOf(prefix) === 0) store.removeItem(k);
@@ -2545,6 +2753,101 @@
     navigator.serviceWorker.register('sw.js').catch(function () {});
   }
 
+  /* ---------- Применение языка: статика HTML + живые перерисовки ---------- */
+  function setText(sel, key) { var el = document.querySelector(sel); if (el) el.textContent = t(key); }
+  function setTitle(id, key) {
+    var el = document.getElementById(id);
+    if (el) { el.title = t(key); el.setAttribute('aria-label', t(key)); }
+  }
+  function segTexts(sel, keys) {
+    var bs = document.querySelectorAll(sel);
+    keys.forEach(function (k, j) { if (bs[j]) bs[j].textContent = t(k); });
+  }
+  function applyStaticTexts() {
+    segTexts('.stats b', ['st_moves', 'st_time', 'st_best', 'st_diff']);
+    segTexts('.wood-row .wb span', ['cap_pause', 'cap_undo', 'cap_replay', 'cap_menu', 'cap_sound']);
+    setTitle('pauseBtn', 'title_pause'); setTitle('undoBtn', 'title_undo');
+    setTitle('replayBtn', 'title_replay'); setTitle('menuBtn', 'title_menu');
+    setTitle('musicToggle', 'title_music'); setTitle('coachSkip', 'aria_coach_skip');
+    var bd = document.getElementById('board');
+    if (bd) bd.setAttribute('aria-label', t('aria_board'));
+    var sh = document.getElementById('soundHint');
+    if (sh) sh.innerHTML = SVG_SND_ON + esc(t('sound_hint'));
+    // победа (динамику перезапишет onWin, здесь — значения по умолчанию)
+    setText('#winOverlay h2', 'win_title');
+    setText('#againBtn', 'btn_again'); setText('#nextBtn', 'btn_next');
+    setText('#shareBtn', 'btn_share'); setText('#winMenuBtn', 'btn_win_menu');
+    // финал кампании режима
+    setText('#modeStayBtn', 'btn_stay');
+    // лимит ходов
+    setText('#limitOverlay h2', 'limit_title');
+    setText('#limitRetryBtn', 'btn_limit_retry'); setText('#limitCloseBtn', 'btn_menu');
+    // статистика
+    setText('#statsOverlay h2', 'stats_title');
+    setText('#statsOverlay .zen', 'stats_zen');
+    setText('#statsOverlay .menu-label', 'lbl_mode');
+    segTexts('#statsFilter button', ['flt_all', 'mode_rays', 'mode_cross', 'mode_diagonals']);
+    setText('#resetStatsBtn', 'btn_reset_stats'); setText('#closeStatsBtn', 'btn_close');
+    // пауза
+    setText('#pauseOverlay h2', 'pause_title'); setText('#pauseOverlay .zen', 'pause_zen');
+    setText('#resumeBtn', 'btn_resume'); setText('#restartBtn', 'btn_restart');
+    setText('#pauseMenuBtn', 'btn_menu'); setText('#endMarathonBtn', 'btn_end_marathon');
+    // меню
+    setText('#menuOverlay h2', 'menu_title'); setText('#menuOverlay .zen', 'menu_zen');
+    setText('#menuResumeBtn', 'btn_resume'); setText('#menuNewBtn', 'btn_new_game');
+    setText('#marathonBtn', 'btn_marathon'); setText('#menuSettingsBtn', 'btn_settings');
+    setText('#menuStatsBtn', 'btn_stats'); setText('#closeMenuBtn', 'btn_exit');
+    // уровни
+    setText('#levelsOverlay h2', 'levels_title');
+    setText('#levelsOverlay .menu-label', 'lbl_mode');
+    segTexts('#levelsModeSeg button', ['mode_rays', 'mode_cross', 'mode_diagonals']);
+    setText('#closeLevelsBtn', 'btn_close');
+    // настройки
+    setText('#settingsOverlay h2', 'set_title'); setText('#settingsOverlay .zen', 'set_zen');
+    segTexts('#settingsOverlay .menu-label', ['lbl_mode', 'lbl_rocks', 'lbl_diff', 'lbl_target',
+      'lbl_sound', 'lbl_music', 'lbl_volume', 'lbl_hint', 'lbl_vibro', 'lbl_lang']);
+    segTexts('#modeSeg button', ['mode_rays', 'mode_cross', 'mode_diagonals']);
+    segTexts('#rocksSeg button', ['off', 'on']);
+    segTexts('#diffSeg button', ['diff_easy', 'diff_medium', 'diff_hard']);
+    segTexts('#targetSeg button', ['target_white', 'target_black']);
+    segTexts('#soundSeg button', ['on', 'off']);
+    segTexts('#hintSeg button', ['on', 'off']);
+    segTexts('#vibroSeg button', ['on', 'off']);
+    // музыка: первые 4 опции переводим, Konnichiwa — имя собственное
+    (function () {
+      var opts = document.querySelectorAll('#musicSelect option');
+      ['opt_off', 'opt_fire', 'opt_rain', 'opt_sakura'].forEach(function (k, j) {
+        if (opts[j]) opts[j].textContent = t(k);
+      });
+    })();
+    setText('#closeSettingsBtn', 'btn_done');
+    setText('#settingsOverlay .menu-note a', 'link_privacy');
+  }
+  function applyLang(lang, save) {
+    LANG = (lang === 'en') ? 'en' : 'ru';
+    if (save) store.setItem('los_lang', LANG);   // автовыбор не сохраняем — вдруг сменится язык системы
+    document.documentElement.lang = LANG;
+    rebuildDicts();
+    applyStaticTexts();
+    document.querySelectorAll('#langSeg button').forEach(function (b) {
+      b.classList.toggle('active', b.dataset.lang === LANG);
+    });
+    // живые строки текущего состояния
+    els.ruleHint.textContent = targetColor() === L.BLACK ? t('rule_black') : t('rule_white');
+    els.diffLabel.textContent = state.daily ? '' : (DIFF_NAMES[state.diff] || '—');
+    if (state.tutStep) showCoach(state.tutStep);
+    renderCampStrip();
+    renderLevels();
+    syncMenu();
+    updateDailyBtn();
+    if (els.stats.classList.contains('show')) renderStats();
+  }
+  document.getElementById('langSeg').addEventListener('click', function (e) {
+    var btn = e.target.closest('button'); if (!btn) return;
+    if (btn.dataset.lang !== LANG) applyLang(btn.dataset.lang, true);
+  });
+
+  applyLang(LANG, false);   // язык — до первой отрисовки, чтобы не мигал русский у EN-пользователей
   syncMenu();
   renderLevels();
   updateIncense();

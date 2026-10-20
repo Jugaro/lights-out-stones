@@ -6,16 +6,16 @@
 
 **Короткое описание (80 символов):**
 ```
-Логическая головоломка: сделайте все камни на доске белыми
+Логическая головоломка: переверните все камни белой стороной вверх
 ```
-(57 символов)
+(66 символов)
 
 **Полное описание (до 4000 символов):**
 ```
 Lights Out Stones — спокойная логическая головоломка на деревянной доске с чёрными и белыми камнями, как в го.
 
 КАК ИГРАТЬ
-Коснитесь камня — и он перевернётся вместе с соседними: чёрные станут белыми, белые — чёрными. Задача — сделать все камни на доске белыми. Первые доски решаются за минуту, а большие заставят как следует подумать.
+Коснитесь камня — и он перевернётся вместе с соседними: чёрные станут белыми, белые — чёрными. Задача — перевернуть все камни на доске белой стороной вверх. Первые доски решаются за минуту, а большие заставят как следует подумать.
 
 ТРИ РЕЖИМА ПЕРЕВОРОТА
 • Лучи — переворачивается вся строка и весь столбец
@@ -49,16 +49,16 @@ Lights Out Stones — спокойная логическая головолом
 
 **Short description (80 chars):**
 ```
-A calm logic puzzle: make every stone on the board white
+A calm logic puzzle: flip every stone white side up
 ```
-(56 символов)
+(52 символа)
 
 **Full description:**
 ```
 Lights Out Stones is a calm logic puzzle on a wooden board with black and white go-style stones.
 
 HOW TO PLAY
-Tap a stone and it flips together with its neighbors: black turns white, white turns black. The goal is to make every stone on the board white. The first boards take a minute; the big ones will make you think.
+Tap a stone and it flips together with its neighbors: black turns white, white turns black. The goal is to flip every stone on the board white side up. The first boards take a minute; the big ones will make you think.
 
 THREE FLIP MODES
 • Rays — the whole row and column flip

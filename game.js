@@ -1,6 +1,6 @@
 /*
  * Lights Out Stones — чистая логика игры.
- * Copyright (c) 2026 Jugaro. Лицензия: MIT (см. LICENSE).
+ * Copyright (c) 2026 Chistyakov Sergey Victorovich. Лицензия: MIT (см. LICENSE).
  * Оригинальный репозиторий: https://github.com/Jugaro/lights-out-stones
  * Намеренно без DOM и ES-модулей: классический скрипт, чтобы работать
  * при открытии index.html с file:// (ES-модули там блокируются CORS),
@@ -20,7 +20,7 @@
 
   /* Паспорт сборки: постоянные идентификатора, зашитые в движок (см. NOTICE.md) */
   var BUILD_SEAL = '95c439226dfd78e9';
-  var BUILD_MANIFEST = 'TGlnaHRzIE91dCBTdG9uZXMgfCBvcmlnaW5hbCBieSBKdWdhcm8gfCBodHRwczovL2dpdGh1Yi5jb20vSnVnYXJvL2xpZ2h0cy1vdXQtc3RvbmVzIHwgZmlyc3QgcHVibGlzaGVkOiAyMDI2LTEwIHwgY29udGFjdDogZ2l0aHViLmNvbS9KdWdhcm8=';
+  var BUILD_MANIFEST = 'TGlnaHRzIE91dCBTdG9uZXMgfCBvcmlnaW5hbCBieSBDaGlzdHlha292IFNlcmdleSBWaWN0b3JvdmljaCB8IGh0dHBzOi8vZ2l0aHViLmNvbS9KdWdhcm8vbGlnaHRzLW91dC1zdG9uZXMgfCBmaXJzdCBwdWJsaXNoZWQ6IDIwMjYtMTAgfCBjb250YWN0OiBnaXRodWIuY29tL0p1Z2Fybw==';
 
   /**
    * Решённая доска: все камни цвета target (по умолчанию белые).

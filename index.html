@@ -80,22 +80,12 @@
     flex-wrap: wrap;
   }
   .rule-row .rule-hint { margin: 0; }
-  /* Кнопка отмены хода — под таймером (своей строкой по центру под статистикой) */
-  .undo-row { display: flex; justify-content: center; align-items: center; gap: 8px; margin: -4px 0 6px; }
-  .undo-row #undoBtn, .undo-row #replayBtn { padding: 8px 14px; }
+  /* Ряд кнопок-кружков — под статистикой по центру */
   @media (min-width: 641px) {
     .rule-row { flex-direction: column; gap: 8px; }
     .rule-row .rule-hint { order: -1; }
   }
   /* ---------- Панель управления ---------- */
-  .controls {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    justify-content: center;
-    margin: 14px 0 8px;
-    max-width: 560px;
-  }
   .seg { display: flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
   .seg button {
     font-family: inherit; font-size: 14px; padding: 7px 12px;
@@ -421,7 +411,7 @@
     table.wins { font-size: 12px; }
     table.wins th, table.wins td { padding: 4px 3px; }
     h1 { letter-spacing: 0.04em; font-size: 20px; }
-    .controls { flex-wrap: wrap; gap: 8px; }
+    .wood-row { gap: 8px; }
     .stats { gap: 8px; font-size: 12.5px; }
     .stats span { font-size: 16px; }
     .camp-strip { flex-wrap: wrap; justify-content: center; row-gap: 2px; padding: 4px 6px; gap: 6px; }
@@ -434,7 +424,7 @@
     body { padding: 8px 10px 12px; }
     h1 { font-size: 19px; }
     .rule-hint { display: none; }
-    .controls { margin: 6px 0 4px; gap: 6px; }
+    .wood-row { margin: 2px 0 4px; gap: 8px; }
     .stats { margin: 2px 0 6px; font-size: 13px; }
     .stats span { font-size: 15px; }
     .board { width: min(50vw, 58vh, 420px); }
@@ -466,38 +456,42 @@
   /* Бонусные строки в окне победы */
   .win-bonus { margin-top: 8px; color: #7a5a1e; font-weight: 700; letter-spacing: 0.03em; }
   .win-suggest { margin-top: 6px; font-style: italic; opacity: 0.85; }
-  /* Значок музыки в углу: вкл/выкл без похода в настройки.
-     Кружок — деревянный, в тон поверхности доски; значок — тёмно-коричневый (#4a3319) */
-  .music-toggle {
-    position: fixed; right: calc(14px + env(safe-area-inset-right, 0px));
-    bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+  /* Дзен-ряд кнопок-кружков (вариант B): пауза · меню · отмена · заново · звук */
+  .wood-row { display: flex; justify-content: center; align-items: flex-start; gap: 14px; margin: -2px 0 6px; }
+  .wb { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .wb span { font-size: 11px; color: #6b5636; }
+  .wood-btn {
     width: 46px; height: 46px; border-radius: 50%;
     border: 1px solid rgba(92, 58, 28, 0.45);
     background:
       radial-gradient(circle at 30% 25%, rgba(255, 240, 205, 0.55), transparent 60%),
       linear-gradient(150deg, #eccf95, #ddb271 70%, #d3a45f);
-    font-size: 21px; line-height: 1; cursor: pointer;
+    color: #4a3319;
+    font-size: 20px; line-height: 1; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; padding: 0;
     box-shadow:
       0 2px 10px rgba(60, 45, 20, 0.25),
       inset 0 1px 2px rgba(255, 235, 200, 0.5),
       inset 0 -1px 3px rgba(120, 80, 35, 0.3);
   }
-  .music-toggle:active { transform: scale(0.94); }
+  .wood-btn:active { transform: scale(0.94); }
+  .wood-btn:disabled { opacity: 0.4; cursor: default; }
+  .wood-btn svg { width: 26px; height: 26px; display: block; }
+  .wood-btn[hidden] { display: none; }
+  /* Звук: на телефоне — плавающий кружок в правом нижнем углу (подпись скрыта),
+     в браузере — такой же кружок в общем ряду */
+  .music-toggle {
+    position: fixed; right: calc(14px + env(safe-area-inset-right, 0px));
+    bottom: calc(14px + env(safe-area-inset-bottom, 0px)); z-index: 40;
+  }
   .music-toggle.muted { opacity: 0.6; }
-  .music-toggle { color: #4a3319; }
-  .music-toggle svg { width: 26px; height: 26px; display: block; }
-  /* На телефоне значок музыки — плавающая кнопка в правом нижнем углу.
-     В браузере — статично в ряду кнопок, справа от «Заново». */
+  @media (max-width: 640px) {
+    .wb.sound { width: 0; height: 0; overflow: visible; }
+    .wb.sound span { display: none; }
+  }
   @media (min-width: 641px) {
-    .music-toggle {
-      position: static;
-      display: block;
-      margin: 0;
-      transform: none;
-      flex: none;
-    }
+    .music-toggle { position: static; flex: none; transform: none; }
     .music-toggle:active { transform: scale(0.94); }
-    .music-toggle[hidden] { display: none; }
   }
   /* Главное действие (крупная тёмная) и выключенные кнопки */
   .btn.primary { background: linear-gradient(160deg, #3a2c18, #241a0d); color: #f7ecd2; border-color: #241a0d; font-weight: 700; }
@@ -521,21 +515,18 @@
 
 <h1>Lights Out Stones</h1>
 
-<div class="controls">
-  <button class="btn small" id="pauseBtn">⏸ Пауза</button>
-  <button class="btn small" id="menuBtn">☰ Меню</button>
-</div>
-
 <div class="stats">
   <div><b>ХОДЫ</b><span id="moves">0</span></div>
   <div><b>ВРЕМЯ</b><span id="time">0:00</span></div>
   <div><b>РЕКОРД</b><span id="best">—</span></div>
   <div><b>СЛОЖНОСТЬ</b><span id="diffLabel">—</span></div>
 </div>
-<div class="undo-row">
-  <button class="btn small" id="undoBtn" disabled>↩ Отменить ход</button>
-  <button class="btn small" id="replayBtn">↻ Заново</button>
-  <button id="musicToggle" class="music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6M18.1 6.4a8.2 8.2 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button>
+<div class="wood-row">
+  <div class="wb"><button class="wood-btn" id="pauseBtn" title="Пауза" aria-label="Пауза">⏸</button><span>пауза</span></div>
+  <div class="wb"><button class="wood-btn" id="menuBtn" title="Меню" aria-label="Меню">☰</button><span>меню</span></div>
+  <div class="wb"><button class="wood-btn" id="undoBtn" title="Отменить ход" aria-label="Отменить ход" disabled>↩</button><span>отмена</span></div>
+  <div class="wb"><button class="wood-btn" id="replayBtn" title="Заново" aria-label="Начать заново">↻</button><span>заново</span></div>
+  <div class="wb sound"><button id="musicToggle" class="wood-btn music-toggle" hidden title="Музыка вкл/выкл" aria-label="Музыка вкл/выкл"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6M18.1 6.4a8.2 8.2 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></button><span>звук</span></div>
 </div>
 <div class="camp-strip" id="campStrip" hidden>
   <span class="cap" id="campCaption"></span>
@@ -974,7 +965,10 @@
     hint: store.getItem('los_hint') !== 'off',
     vibro: store.getItem('los_vibro') !== 'off',
     rocks: store.getItem('los_rocks') === 'on',
-    volume: Math.min(1, Math.max(0, Number(store.getItem('los_volume')) || 0.8)),
+    volume: (function () {   // Number('0') || 0.8 съедал честный ноль: громкость 0 не переживала перезагрузку
+      var v = store.getItem('los_volume');
+      return v === null ? 0.8 : Math.min(1, Math.max(0, Number(v)));
+    })(),
     unlocked: campaignPos(initialMode) === null ? 9 : campaignUnlocked(initialMode),
     board: [],
     startBoard: null,
@@ -987,6 +981,9 @@
     elapsed: 0,
     locked: false,
     daily: false,
+    dailyDate: null,   // ключ дня доски вызова (фиксируется в newGame — победа после полуночи пишется на день доски)
+    dailyDay: null,    // Date того же дня — для серии дней
+    limitFailed: false, // лимит вызова дня исчерпан: ходы запрещены, но отмена последнего хода доступна
     paused: false,
     usedUndo: false,   // для звёзд: отмена хода снижает награду
     undoArmed: false,  // отмена доступна ровно один раз — до следующего хода
@@ -1188,7 +1185,9 @@
   var SVG_SND_ON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M15.4 9.2a4.2 4.2 0 0 1 0 5.6M18.1 6.4a8.2 8.2 0 0 1 0 11.2" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
   var SVG_SND_OFF = '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3.5 9.4v5.2h3.7l5 4.3V5.1l-5 4.3H3.5z"/><path d="M16 9.4l5.2 5.6M21.2 9.4L16 15" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>';
   function updateMusicToggle() {
-    els.musicToggle.hidden = state.music === 'off';   // музыка выключена в настройках — значка нет
+    var off = state.music === 'off';
+    els.musicToggle.hidden = off;   // музыка выключена в настройках — значка нет
+    els.musicToggle.parentElement.style.display = off ? 'none' : '';   // и подпись «звук» в дзен-ряду
     els.musicToggle.innerHTML = musicMuted ? SVG_SND_OFF : SVG_SND_ON;
     els.musicToggle.classList.toggle('muted', musicMuted);
   }
@@ -1516,6 +1515,11 @@
     var d = new Date();
     return 'los_daily_' + d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
   }
+  /* 'los_daily_2026-10-4' → '2026-10-04' (формат строки истории) */
+  function dailyKeyToDate(key) {
+    var p = key.slice(10).split('-');
+    return p[0] + '-' + ('0' + p[1]).slice(-2) + '-' + ('0' + p[2]).slice(-2);
+  }
   /* Безопасное чтение записи дня: битый JSON не должен ронять игру */
   function readDailyRec(key) {
     try {
@@ -1528,8 +1532,12 @@
     try { return JSON.parse(store.getItem('los_daily_history')) || []; }
     catch (e) { return []; }
   }
-  function recordDailyHistory(time, moves) {
-    var date = new Date().toISOString().slice(0, 10);
+  function recordDailyHistory(time, moves, date) {
+    // локальная дата, а не UTC: у ночных игроков (UTC+X) записи не уезжают на «вчера»
+    if (!date) {
+      var d = new Date();
+      date = d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2);
+    }
     var list = getDailyHistory().filter(function (r) { return r.date !== date; });
     list.push({ date: date, time: time, moves: moves });
     list.sort(function (a, b) { return b.date < a.date ? -1 : 1; });   // новые сверху
@@ -1546,11 +1554,15 @@
     try { return JSON.parse(store.getItem('los_streak')) || { last: null, count: 0 }; }
     catch (e) { return { last: null, count: 0 }; }
   }
-  function bumpStreak() {
+  function bumpStreak(base) {   // base — Date дня доски (умолчание: сегодня); важно при победе после полуночи
+    base = base || new Date();
+    var ds = base.getFullYear() + '-' + (base.getMonth() + 1) + '-' + base.getDate();
+    var prev = new Date(base); prev.setDate(prev.getDate() - 1);
+    var ps = prev.getFullYear() + '-' + (prev.getMonth() + 1) + '-' + prev.getDate();
     var s = getStreak();
-    if (s.last === dayStr()) return s.count;   // сегодня уже засчитано
-    s.count = (s.last === dayStr(1)) ? s.count + 1 : 1;
-    s.last = dayStr();
+    if (s.last === ds) return s.count;   // этот день уже засчитан
+    s.count = (s.last === ps) ? s.count + 1 : 1;
+    s.last = ds;
     store.setItem('los_streak', JSON.stringify(s));
     return s.count;
   }
@@ -1621,6 +1633,11 @@
       range = [6, 6];
       rng = mulberry32(dailySeed());
     }
+    // день доски фиксируется на старте: победа после полуночи запишется на день доски,
+    // а не на новый день (сессия после полуночи сравнивается с тем же ключом)
+    state.dailyDate = state.daily ? dailyKey() : null;
+    state.dailyDay = state.daily ? new Date() : null;
+    state.limitFailed = false;
     // препятствия — своим генератором, чтобы доска оставалась воспроизводимой
     state.blocks = state.rocks
       ? makeBlocks(n, state.daily ? mulberry32(dailySeed() ^ 0x9e3779b9) : Math.random)
@@ -1665,7 +1682,7 @@
     state.usedUndo = false;
     state.undoArmed = false;
     marathonAgain = false;
-    pauseBtn.textContent = '⏸ Пауза';
+    pauseBtn.textContent = '⏸';
     els.time.textContent = '0:00';
     updateIncense();
     els.win.classList.remove('show');
@@ -1708,8 +1725,10 @@
 
   /* ---------- Автосохранение партии: закрыл вкладку — партия ждёт ---------- */
   function currentElapsed() {
+    // startedAt уже сдвинут назад на накопленное elapsed (startTimer) —
+    // прибавлять elapsed ещё раз нельзя: иначе каждый автосейв удваивает время
     return state.startedAt
-      ? state.elapsed + Math.floor((Date.now() - state.startedAt) / 1000)
+      ? Math.floor((Date.now() - state.startedAt) / 1000)
       : state.elapsed;
   }
   function saveSession() {
@@ -1720,7 +1739,7 @@
         board: state.board, start: state.startBoard, moves: state.moves,
         history: state.history.slice(-30), elapsed: currentElapsed(),
         blocks: state.blocks, moveLimit: state.moveLimit,
-        daily: state.daily, dailyDate: state.daily ? dailyKey() : null,
+        daily: state.daily, dailyDate: state.daily ? state.dailyDate : null,
         usedUndo: state.usedUndo,   // иначе отмена «забывается» и звёзды завышаются
         undoArmed: state.undoArmed,   // и одноразовость отмены не обходится перезагрузкой
         marathon: state.marathon   // чекпоинт марафона переживает закрытие вкладки
@@ -1753,8 +1772,10 @@
     state.marathon = s.marathon || null;
     state.usedUndo = !!s.usedUndo;
     state.undoArmed = !!s.undoArmed;
-    state.locked = false; state.paused = false;
-    pauseBtn.textContent = '⏸ Пауза';
+    state.locked = false; state.paused = false; state.limitFailed = false;
+    state.dailyDate = state.daily ? (s.dailyDate || dailyKey()) : null;
+    state.dailyDay = state.daily ? new Date() : null;   // сессия живёт только в день доски — дата та же
+    pauseBtn.textContent = '⏸';
     els.time.textContent = fmtTime(state.elapsed);
     els.win.classList.remove('show');
     els.ruleHint.textContent = targetColor() === L.BLACK
@@ -1777,7 +1798,7 @@
   }
 
   function onPress(r, c) {
-    if (state.locked || state.paused) return;
+    if (state.locked || state.paused || state.limitFailed) return;
     // препятствие не нажимается: ход не тратится, лимит вызова дня не сгорает
     if (state.blocks.indexOf(r * state.n + c) >= 0) return;
     if (state.moves === 0 && !state.startedAt) startTimer();
@@ -1801,12 +1822,13 @@
     if (state.moveLimit && state.moves >= state.moveLimit) limitFail();
   }
   function limitFail() {
-    state.locked = true;
+    // НЕ locked: партия не завершена — последний ход ещё можно отменить и продолжить
+    state.limitFailed = true;
     stopTimer();
     sndClick();
     vibro([120, 60, 120]);
     clearSession();
-    els.limitInfo.textContent = 'Лимит ' + state.moveLimit + ' ходов исчерпан. Доска дня ждёт новой попытки.';
+    els.limitInfo.textContent = 'Лимит ' + state.moveLimit + ' ходов исчерпан. Можно отменить последний ход или начать попытку заново.';
     els.limit.classList.add('show');
   }
   function limitRetry() {
@@ -1816,6 +1838,9 @@
     state.history = [];
     state.elapsed = 0;
     state.locked = false;
+    state.limitFailed = false;
+    state.undoArmed = false;   // иначе кнопка отмены активна при пустой истории
+    els.undo.disabled = true;
     state.startedAt = null;
     els.time.textContent = '0:00';
     updateIncense();
@@ -1831,6 +1856,12 @@
     state.usedUndo = true;   // для звёзд: любая отмена снижает награду
     els.undo.disabled = true;
     sndClick();
+    if (state.limitFailed) {
+      // отмена после исчерпания лимита: партия продолжается — прячем окно и возобновляем таймер
+      state.limitFailed = false;
+      els.limit.classList.remove('show');
+      startTimer();
+    }
     render();
     saveSession();
   }
@@ -1847,23 +1878,24 @@
     clearSession();
     var n = state.n;
     if (state.daily) {
-      // вызов дня: записываем лучший результат сегодня, не трогая обычную статистику
-      var key = dailyKey();
+      // вызов дня: записываем лучший результат ДНЯ ДОСКИ (зафиксирован в newGame),
+      // не трогая обычную статистику; победа после полуночи — на день доски
+      var key = state.dailyDate || dailyKey();
       var prevRec = readDailyRec(key);
       var isRecord = !prevRec || state.elapsed < prevRec.time;
       if (isRecord) store.setItem(key, JSON.stringify({ time: state.elapsed, moves: state.moves }));
-      recordDailyHistory(isRecord ? state.elapsed : prevRec.time, isRecord ? state.moves : prevRec.moves);
+      recordDailyHistory(isRecord ? state.elapsed : prevRec.time, isRecord ? state.moves : prevRec.moves, dailyKeyToDate(key));
       lastWin = { daily: true, n: state.n, time: state.elapsed, moves: state.moves, start: state.startBoard };
       updateDailyBtn();
       els.winZen.textContent = 'вызов дня пройден';
       els.winDetails.textContent = 'Вызов дня · ' +
         fmtTime(state.elapsed) + ' · ' + pluralMoves(state.moves);
       els.winRecord.textContent = isRecord
-        ? (prevRec ? '✦ Лучше вчерашнего: ' + fmtTime(prevRec.time) + ' ✦' : '✦ Первое прохождение сегодня! ✦')
+        ? (prevRec ? '✦ Лучше сегодняшнего: ' + fmtTime(prevRec.time) + ' ✦' : '✦ Первое прохождение сегодня! ✦')
         : 'Сегодня лучше: ' + fmtTime(prevRec.time);
       els.best.textContent = fmtTime(isRecord ? state.elapsed : prevRec.time);
       // серия дней: огоньки растут с каждым пройденным вызовом подряд
-      var st = bumpStreak();
+      var st = bumpStreak(state.dailyDay);
       els.winBonus.textContent = st > 1 ? ('Серия дней: ' + streakFlames(st)) : '';
       els.winBonus.hidden = st <= 1;
       document.getElementById('nextBtn').hidden = true;   // в вызове дня «следующего уровня» нет
@@ -2118,7 +2150,7 @@
     stopTimer();
     saveSession();   // вкладку могут закрыть, пока стоит пауза
     document.body.classList.add('paused');
-    pauseBtn.textContent = '▶ Продолжить';
+    pauseBtn.textContent = '▶';
     document.getElementById('endMarathonBtn').hidden = !state.marathon;
     els.pause.classList.add('show');
   }
@@ -2126,7 +2158,7 @@
     if (!state.paused) return;
     state.paused = false;
     document.body.classList.remove('paused');
-    pauseBtn.textContent = '⏸ Пауза';
+    pauseBtn.textContent = '⏸';
     els.pause.classList.remove('show');
     if (state.moves > 0 || state.elapsed > 0) startTimer(); // таймер продолжает с накопленного времени
                                                               // (elapsed>0 — ходы могли быть отменены до нуля)
@@ -2333,7 +2365,7 @@
     els.pause.classList.remove('show');
     state.paused = false;
     document.body.classList.remove('paused');   // иначе дымок и уголёк остаются «в паузе»
-    pauseBtn.textContent = '⏸ Пауза';
+    pauseBtn.textContent = '⏸';
     document.getElementById('endMarathonBtn').hidden = true;
     newGame();
     toast('Марафон завершён досрочно');
@@ -2343,7 +2375,7 @@
     els.pause.classList.remove('show');
     state.paused = false;
     document.body.classList.remove('paused');
-    pauseBtn.textContent = '⏸ Пауза';
+    pauseBtn.textContent = '⏸';
     document.getElementById('endMarathonBtn').hidden = true;
     newGame();
     toast('Новая попытка');

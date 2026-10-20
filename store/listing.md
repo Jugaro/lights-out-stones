@@ -6,42 +6,42 @@
 
 **Короткое описание (80 символов):**
 ```
-Восточная головоломка: обратите все камни белой стороной вверх
+Логическая головоломка: сделайте все камни на доске белыми
 ```
-(67 символов)
+(57 символов)
 
 **Полное описание (до 4000 символов):**
 ```
-Lights Out Stones — медитативная головоломка в духе восточных камней и классической игры Lights Out.
+Lights Out Stones — спокойная логическая головоломка на деревянной доске с чёрными и белыми камнями, как в го.
 
-ПРАВИЛА ПРОСТЫ, ПУТЬ — НЕТ
-Коснитесь камня — и он перевернётся вместе с соседями по линии. Цель: обратить все камни доски белой стороной вверх. Чем дальше, тем хитрее узоры.
+КАК ИГРАТЬ
+Коснитесь камня — и он перевернётся вместе с соседними: чёрные станут белыми, белые — чёрными. Задача — сделать все камни на доске белыми. Первые доски решаются за минуту, а большие заставят как следует подумать.
 
-ТРИ ШКОЛЫ КАМНЯ
-• Лучи — камень переворачивает всю строку и столбец
-• Крест — только ближайших соседей
-• Диагонали — удар уходит по диагоналям
+ТРИ РЕЖИМА ПЕРЕВОРОТА
+• Лучи — переворачивается вся строка и весь столбец
+• Крест — только сам камень и его ближайшие соседи
+• Диагонали — переворот идёт по диагоналям
+Каждый режим — своя тактика: то, что работает в «Лучах», не поможет в «Диагоналях».
 
-КАМПАНИЯ-МАРАФОН
-36 досок: три школы, размеры от 3×3 до 9×9, три уровня сложности. Проходите серию, зарабатывайте звёзды за короткие решения и открывайте новые испытания.
+КАМПАНИЯ
+36 досок: размеры от 3×3 до 9×9, три уровня сложности. За короткие решения дают звёзды — попробуйте собрать все.
 
 ВЫЗОВ ДНЯ
-Каждый день — одна общая доска для всех игроков мира. Решите её и сохраните серию дней.
+Каждый день — новая доска, одинаковая для всех игроков. Заходите ежедневно и не разрывайте серию.
 
-ДЗЕН
-Никакой спешки: спокойная фоновая музыка, тёплое дерево доски, отмена хода и честные рекорды. Играйте в темпе дыхания.
-
-БЕЗ ЛИШНЕГО
+ИГРАЙТЕ КАК УДОБНО
+• Спокойная музыка и тёплое деревянное оформление — игра никуда не торопит
+• Отмена хода и кнопка «заново»
+• Рекорды и прогресс хранятся на устройстве
+• Работает без интернета
 • Без рекламы и встроенных покупок
-• Работает полностью офлайн
-• Прогресс сохраняется на устройстве
 
-Переверните первый камень — и час пролетит незаметно.
+Коснитесь первого камня — и время пойдёт незаметно.
 ```
-(~1200 символов)
+(~1150 символов)
 
 **Категория:** Головоломки
-**Теги/ключевые слова:** головоломка, логика, дзен, камни, lights out, офлайн, без рекламы
+**Ключевые слова:** головоломка, логика, камни, го, lights out, офлайн, без рекламы
 
 ## English
 
@@ -49,35 +49,35 @@ Lights Out Stones — медитативная головоломка в дух�
 
 **Short description (80 chars):**
 ```
-A zen puzzle: flip every stone white side up
+A calm logic puzzle: make every stone on the board white
 ```
-(45 символов)
+(56 символов)
 
 **Full description:**
 ```
-Lights Out Stones is a meditative puzzle inspired by eastern stones and the classic Lights Out game.
+Lights Out Stones is a calm logic puzzle on a wooden board with black and white go-style stones.
 
-SIMPLE RULES, DEEP PATH
-Tap a stone and it flips together with its neighbors along the line. The goal: turn every stone on the board white side up. The further you go, the trickier the patterns.
+HOW TO PLAY
+Tap a stone and it flips together with its neighbors: black turns white, white turns black. The goal is to make every stone on the board white. The first boards take a minute; the big ones will make you think.
 
-THREE SCHOOLS OF STONE
-• Rays — a stone flips its entire row and column
-• Cross — only the nearest neighbors
-• Diagonals — the strike goes along diagonals
+THREE FLIP MODES
+• Rays — the whole row and column flip
+• Cross — only the stone and its nearest neighbors
+• Diagonals — the flip runs along diagonals
+Each mode needs its own tactics: what works in Rays won't help in Diagonals.
 
-MARATHON CAMPAIGN
-36 boards: three schools, sizes from 3×3 to 9×9, three difficulty levels. Clear the series, earn stars for short solutions and unlock new challenges.
+CAMPAIGN
+36 boards: sizes from 3×3 to 9×9 and three difficulty levels. Short solutions earn stars — try to collect them all.
 
 DAILY CHALLENGE
-Every day — one shared board for every player in the world. Solve it and keep your streak alive.
+Every day brings a new board, the same for every player. Come back daily and keep your streak alive.
 
-ZEN
-No rush: calm background music, warm wooden board, undo and honest records. Play at the pace of your breath.
-
-NO CLUTTER
+PLAY YOUR WAY
+• Calm music and a warm wooden look — the game never rushes you
+• Undo and restart buttons
+• Records and progress stay on your device
+• Works without internet
 • No ads, no in-app purchases
-• Works fully offline
-• Progress is saved on your device
 
-Flip the first stone — and an hour will fly by unnoticed.
+Tap the first stone — and time will fly.
 ```
